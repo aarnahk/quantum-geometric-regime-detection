@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Quantum-Geometric Market Regime Detection
 
 A from-scratch reproduction and extension of the QCML geometric-observable
@@ -107,7 +106,3 @@ qgmrd/
 scripts/run_demo.py
 tests/test_smoke.py
 ```
-=======
-# geometric-regime-detection
-
->>>>>>> c6492b3d0690482136d3dd8cbe2f3dc7e221e67f

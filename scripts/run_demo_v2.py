@@ -18,7 +18,7 @@ from qgmrd.channels import (
     ground_energy_series,
     qfi_logdet_series,
 )
-from qgmrd.data import crisis_mask, synthetic_prices
+from qgmrd.data import crisis_mask, load_yfinance, synthetic_prices
 from qgmrd.features import build_features
 from qgmrd.geometry import metric_fd, metric_pt, qcrb_bounds
 from qgmrd.operators import random_hermitian_operators
@@ -31,7 +31,7 @@ from sklearn.preprocessing import StandardScaler, normalize
 
 
 def main() -> None:
-    prices = synthetic_prices()
+    prices = load_yfinance(("SPY","DIA"), start="2005-01-01")
     features = build_features(prices)
 
     # shared preprocessing (v0-style global fit; v1 makes this causal)
@@ -64,7 +64,10 @@ def main() -> None:
     spy_ret = np.log(prices["SPY"]).diff().reindex(features.index).values
     hmm_z = causal_zscore(hmm_high_variance_prob(np.nan_to_num(spy_ret)))
 
-    mask = crisis_mask(features.index, prices)
+    import pandas as pd
+    idx = features.index
+    covid = (idx >= pd.Timestamp("2020-02-19")) & (idx <= pd.Timestamp("2020-04-30"))
+    mask = covid
 
     def d(z):
         return abs(cohens_d(z[mask], z[~mask]))
@@ -79,7 +82,7 @@ def main() -> None:
         ("Gaussian HMM (high-var prob)", "baseline", d(hmm_z)),
     ]
 
-    print("\nCohen's |d|, crisis window vs. rest (synthetic data, offline)\n")
+    print("\nCohen's |d|, COVID window vs. rest (SPY/DIA, offline)\n")
     print(f"{'method':<32}{'type':<16}{'|d|':>8}")
     print("-" * 56)
     for name, kind, val in sorted(rows, key=lambda r: -r[2]):
