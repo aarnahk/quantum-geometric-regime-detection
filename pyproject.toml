@@ -1,0 +1,23 @@
+[project]
+name = "qgmrd"
+version = "0.1.0"
+description = "Quantum-geometric market regime detection (v0): geometric observables from a QCML embedding, benchmarked against a Gaussian HMM."
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "hmmlearn>=0.3",
+]
+
+[project.optional-dependencies]
+data = ["yfinance>=0.2"]
+dev = ["pytest>=7.0", "matplotlib>=3.7"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["qgmrd*"]
