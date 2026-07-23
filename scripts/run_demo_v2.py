@@ -18,7 +18,7 @@ from qgmrd.channels import (
     ground_energy_series,
     qfi_logdet_series,
 )
-from qgmrd.data import crisis_mask, load_yfinance, synthetic_prices
+from qgmrd.data import crisis_mask, load_prices, synthetic_prices
 from qgmrd.features import build_features
 from qgmrd.geometry import metric_fd, metric_pt, qcrb_bounds
 from qgmrd.operators import random_hermitian_operators
@@ -31,7 +31,7 @@ from sklearn.preprocessing import StandardScaler, normalize
 
 
 def main() -> None:
-    prices = load_yfinance(("SPY","DIA"), start="2005-01-01")
+    prices = load_prices(("SPY", "DIA"))
     features = build_features(prices)
 
     # shared preprocessing (v0-style global fit; v1 makes this causal)

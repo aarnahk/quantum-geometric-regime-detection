@@ -34,7 +34,7 @@ from qgmrd.channels import (
     ground_energy_series,
     qfi_logdet_series,
 )
-from qgmrd.data import load_yfinance
+from qgmrd.data import load_prices
 from qgmrd.features import build_features
 from qgmrd.operators import random_hermitian_operators
 from qgmrd.pipeline import embed_series
@@ -45,7 +45,7 @@ DIVERGE_THRESHOLD = 0.10  # |Pearson - Spearman| above this is flagged
 
 
 def main() -> None:
-    prices = load_yfinance(("SPY", "DIA"), start="2005-01-01")
+    prices = load_prices(("SPY", "DIA"))
     features = build_features(prices)
 
     # shared preprocessing (v0-style global fit; Task 2 makes this causal)

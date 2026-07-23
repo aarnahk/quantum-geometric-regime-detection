@@ -44,7 +44,7 @@ from qgmrd.channels import (
     ground_energy_series,
     qfi_logdet_series,
 )
-from qgmrd.data import load_yfinance
+from qgmrd.data import load_prices
 from qgmrd.embedding import ground_state
 from qgmrd.features import build_features
 from qgmrd.observables import reduced_purity, spectral_entropy
@@ -171,7 +171,7 @@ def fit_divergence(global_scaler: StandardScaler, global_pca: PCA,
 
 
 def main() -> None:
-    prices = load_yfinance(("SPY", "DIA"), start="2005-01-01")
+    prices = load_prices(("SPY", "DIA"))
     features = build_features(prices)
     idx = features.index
     feat_names = list(features.columns)

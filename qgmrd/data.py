@@ -4,14 +4,27 @@ synthetic_prices : a self-contained two-asset series with an injected
                    high-volatility, high-correlation crisis window, so the
                    pipeline can be smoke-tested with no network access.
 
-load_yfinance   : one-line swap-in for real SPY/DIA data when you run locally.
-                   Requires ``pip install yfinance`` and internet access.
+load_prices     : THE loader for real data. Reads a pinned CSV snapshot so
+                   every README number is reproducible; fetches once if the
+                   snapshot is missing.
+
+load_yfinance   : raw network fetch. Do not call directly from analysis
+                   scripts -- results would drift between runs (see
+                   ``load_prices``). Requires ``pip install yfinance``.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
+# Data is PINNED for reproducibility. Every real-data figure in the README was
+# computed from this window and this snapshot. `end` is exclusive.
+DATA_START = "2005-01-01"
+DATA_END = "2026-07-01"
+CACHE_PATH = Path(__file__).resolve().parent.parent / "data" / "spy_dia_close.csv"
 
 
 def synthetic_prices(
@@ -47,10 +60,52 @@ def crisis_mask(index: pd.DatetimeIndex, prices: pd.DataFrame,
     return index.isin(crisis_dates)
 
 
-def load_yfinance(tickers=("SPY", "DIA"), start="2005-01-01", end=None):
-    """Swap-in for real data (local use). Returns a close-price frame."""
+def load_yfinance(tickers=("SPY", "DIA"), start=DATA_START, end=DATA_END):
+    """Raw network fetch. Returns a close-price frame.
+
+    ``auto_adjust=True`` is passed EXPLICITLY rather than left to the yfinance
+    default, which has changed across versions -- an implicit default would
+    silently alter every number in this repo on a dependency bump.
+    """
     import yfinance as yf  # imported lazily; not needed for the synthetic demo
 
-    data = yf.download(list(tickers), start=start, end=end, progress=False)
+    data = yf.download(list(tickers), start=start, end=end,
+                       auto_adjust=True, progress=False)
     close = data["Close"][list(tickers)].dropna()
+    close.index.name = "Date"
     return close
+
+
+def load_prices(tickers=("SPY", "DIA"), start=DATA_START, end=DATA_END,
+                refresh=False):
+    """Pinned, reproducible price loader -- use this, not ``load_yfinance``.
+
+    Reads the committed CSV snapshot at ``CACHE_PATH`` if present; otherwise
+    fetches once and writes it. Every real-data number in the README comes from
+    this snapshot.
+
+    Why a snapshot and not just a pinned ``end`` date: yfinance returns
+    dividend/split-adjusted closes, so each new distribution retroactively
+    rescales the ENTIRE price history. A pinned end date freezes the last row
+    but not the earlier ones, and Cohen's d compares a crisis window against
+    every other day -- so unpinned data quietly shifts every d, correlation,
+    and null floor in the repo between runs. Only a snapshot fixes that.
+
+    Pass ``refresh=True`` to deliberately re-pull and overwrite the snapshot
+    (expect numbers to move; re-run every script and update the README).
+    """
+    tickers = list(tickers)
+    if CACHE_PATH.exists() and not refresh:
+        close = pd.read_csv(CACHE_PATH, index_col="Date", parse_dates=True)
+        missing = [t for t in tickers if t not in close.columns]
+        if missing:
+            raise KeyError(f"{CACHE_PATH.name} lacks {missing}; "
+                           f"re-run with refresh=True")
+        close = close[tickers]
+    else:
+        close = load_yfinance(tickers, start=start, end=end)
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        close.to_csv(CACHE_PATH)
+
+    return close.loc[(close.index >= pd.Timestamp(start))
+                     & (close.index < pd.Timestamp(end))]
