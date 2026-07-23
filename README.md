@@ -17,8 +17,9 @@ are *contemporaneous detection* observables, not forecasters.
 
 Cohen's |d|, COVID-2020 window vs. rest. **Offline**: preprocessing is fit on
 all data, so these measure crisis-window separability (an event study), not
-causal out-of-sample detection. The causal walk-forward version is the v4
-milestone.
+causal out-of-sample detection. The causal (past-fit) preprocessing version is
+below (Task 2); closing the remaining event-study metric gap (Gap 2) is the
+later milestone.
 
 | method | type | \|d\| |
 |---|---|---|
@@ -157,6 +158,117 @@ This result is offline (global scaler/PCA fit, same caveat as the table
 above) — it answers whether channels agree with each other, not whether any
 one of them is causally clean; that's Task 2.
 
+## Causal (past-fit) preprocessing (Task 2)
+
+```bash
+python scripts/causal_eval.py
+```
+
+Every |d| above is **offline**: scaler and PCA are fit on the whole series,
+crisis included. This script removes that look-ahead — per crisis it fits
+`StandardScaler`, `PCA`, and the HMM baseline only on rows before
+`cutoff = crisis_start − 10 business days`, then transforms the full timeline
+through those past-fit objects. Operators are data-independent and unchanged.
+The 10-day buffer stops 20-day rolling-vol features from leaking the crisis
+backward. This closes **Gap 1** (leaky preprocessing); **Gap 2** (Cohen's *d*
+still scores the crisis window against future days) remains, so the causal
+column is still offline separability, not real-time detection.
+
+**No confidence intervals yet.** Every number below is a point estimate on a
+single realized path of three crises. Block-bootstrap CIs are a pending task;
+until they land, **no delta in this table is certified distinguishable from
+noise**, and "barely moved" means the point estimate barely moved, not a
+statistical claim.
+
+Offline → causal Cohen's |d| (SPY/DIA):
+
+| channel | COVID 2020 | Rate Hikes 2022 | China 2015 |
+|---|---|---|---|
+| Reduced purity | 1.15 → 1.13 | 0.95 → 0.90 | 0.97 → 0.94 |
+| Spectral entropy | 1.01 → 0.97 | 1.18 → 1.22 | 0.71 → 0.49 |
+| Ground energy E0 | 0.96 → 0.95 | 1.64 → 1.61 | 0.48 → 0.65 |
+| Berry phase rate | 0.71 → 0.70 | 0.99 → 0.91 | 0.24 → 0.79 |
+| SLD QFI (w=20) | 0.53 → 0.66 | 0.01 → 0.07 | 0.56 → 0.54 |
+| QFI log-det | 0.10 → 0.22 | 1.20 → 1.09 | 0.82 → 0.18 |
+| Gaussian HMM | 1.15 → 1.13 | 1.07 → 1.06 | 0.04 → 0.02 |
+
+**China 2015 is uninterpretable and is not analyzed channel-by-channel.** The
+HMM control scores 0.04 offline — it essentially cannot see a crisis in
+SPY/DIA over Jul–Sep 2015 (mostly quiet, with one violent week around Aug
+20–26 that Cohen's *d* dilutes against the calm remainder). Independently, the
+causal embedding agrees least with the offline one there (row-wise cosine mean
+0.93, min 0.41 — some days near-orthogonal). With a blind control and the
+largest embedding divergence, no individual channel's swing in that column is
+trustworthy; those numbers are reported for completeness only.
+
+**Does the preprocessing change reach the channels?** (`causal_eval.py` prints
+all of this.) The preprocessing *parameters* diverge modestly and in a
+concentrated way: the top 3 PCA axes are near-identical across crises
+(|cos| ≥ 0.997), and the scaler-scale shift is dominated by a single feature —
+rolling cross-correlation `xcorr20` (Δscale/scale = 0.41 / 0.36 / 0.60, since
+correlations reprice hard in a crisis) — while the other ten features shift
+≤ 0.09 (median ~0.05, only 1/11 above 0.10). That divergence *does* reach the
+daily embedding (row-wise causal-vs-offline cosine mean 0.98 COVID, 0.99 2022,
+0.93 China; min 0.82 on COVID). **But it does not reach the z-scored channel
+series** on the two interpretable crises: causal-vs-offline series
+correlations are 0.94–0.999 on COVID and 2022 (most ≥ 0.98; the frame-
+sensitive Berry and QFI-log-det lowest at 0.94–0.96). So the puzzle of "the
+daily embedding differs yet |d| barely moves" resolves as **channel
+robustness, not metric coarseness**: the trailing causal z-score washes out
+per-day embedding jitter into a detector series ~0.98 correlated with the
+offline one. Where |d| barely moves, the underlying series barely move too —
+the "Cohen's *d* is too coarse to see series-level change" failure mode is
+*not* what the data show here. (On China the series correlations do drop to
+0.78–0.90, i.e. the perturbation reaches the series there — but China is
+uninterpretable for the separate reason above.)
+
+**Reduced purity's point estimate barely moves** (≤ 0.05 in every window).
+This **diverges from Hammond**, who reports reduced purity degrading from
+*d* ≈ 0.83 to ≈ 0.26 *once preprocessing is restricted to past data only* —
+the same restriction this script implements. We do not reproduce that collapse
+under the mechanism he names, and do not claim to know why. Candidates, left
+open:
+
+- **Feature enrichment differs.** Hammond enriches to ~52 features → 15 PCA
+  components; this repo uses 11 raw features → 8. A coarser feature set over a
+  smaller Hilbert space may not carry the factor structure whose breakdown
+  drives his collapse.
+- **"Frozen holdout" may not mean per-crisis causal refitting.** If his figure
+  comes from a single train/test split rather than a per-crisis expanding
+  refit, it measures a different quantity than this script's per-crisis
+  past-fit.
+- **Sample size.** Three crises here vs. his 17 (see the no-CIs caveat).
+- **Optimism-bias drain.** Hammond documents +0.415 *d* of HPO optimism bias.
+  If his offline 0.83 is a tuned number, part of the drop to 0.26 is that
+  inflation leaving. This repo's features were fixed *a priori* and never
+  tuned — no inflation to lose, so a stable causal number is what an un-tuned
+  pipeline would predict.
+- **Window definition.** Where a crisis window is mostly calm, Cohen's *d* is
+  diluted and unstable — the China column above is the extreme case (control
+  blind at 0.04). This bears on China specifically; it does not explain the
+  stability on COVID or 2022, where the control sees the crisis clearly
+  (HMM 1.15, 1.07).
+
+**Favorable result, reported for the same reason unfavorable ones are.** On
+the rate-driven 2022 crisis the geometric channels lead the table — ground
+energy E0 at 1.64 (the highest single |d| here), QFI log-det 1.20, spectral
+entropy 1.18, all above the HMM baseline (1.07). Hammond reports the Berry
+channel leading on rate events; here E0 leads instead. One window, no CIs —
+reported for symmetry, not as a ranking claim.
+
+**The SLD channel, held to the same skepticism as every other channel:** it is
+**blind on Rate Hikes 2022** (0.01 offline, 0.07 causal — flatly, it does not
+see that crisis), flat on China (0.56 → 0.54, and China is uninterpretable
+regardless), and rises on COVID (0.53 → 0.66). That COVID rise is **not**
+claimed as robustness: the QFI log-det channel — near-blind at 0.10 — moved by
+the same +0.12 in the same window, its z-series is 0.97 correlated with the
+offline one, and COVID has real preprocessing divergence, so a mid-pack
+channel moving ±0.13 there is consistent with preprocessing sensitivity, not
+signal. SLD builds ρ_t from ground states that depend on the PCA frame, so it
+is frame-sensitive too — less directly than Berry, but not invariant. Net:
+causal fitting neither clearly helps nor hurts SLD, and no such claim is
+defensible without CIs.
+
 ## Roadmap
 
 - **v1-v3 — DONE.** Embedding, 7 channels, SLD mixed-state QFI, offline
@@ -164,9 +276,11 @@ one of them is causally clean; that's Task 2.
   answering Open Question 1 (SLD is decorrelated, not redundant — see
   above). Identities tested in `tests/test_geometry.py` and
   `tests/test_sld.py`.
-- **v4 — causal walk-forward (next).** Fit scaler/PCA/operators only on
-  pre-crisis rows and re-evaluate — the honest deployment estimate that
-  upgrades every number above from "separability" to out-of-sample detection.
+- **v4 — causal (past-fit) preprocessing — DONE.** Fits scaler/PCA/HMM only on
+  pre-crisis rows, transforms the full timeline, re-evaluates (see "Causal
+  (past-fit) preprocessing" above). Closes Gap 1 (leaky preprocessing); Gap 2
+  (event-study metric) remains, so numbers stay "separability," not yet
+  out-of-sample detection.
 - **v5 — multi-crisis panel.** Repeat across the paper's crisis windows
   (2022 rate hikes, 2015 China, 2018 Q4) with block-bootstrap CIs.
 

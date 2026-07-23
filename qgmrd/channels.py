@@ -4,7 +4,7 @@ berry_phase_rate_series : |F_01(x_t) - F_01(x_{t-1})| (paper Eq. 5), Berry
                           curvature in the top two PCA directions via the
                           gauge-invariant plaquette.
 qfi_logdet_series       : log pseudo-det of the QFI matrix at each t
-                          (the 'QFI Determinant' walk-forward channel).
+                          (the paper's 'QFI Determinant' channel, Table 5).
 ground_energy_series    : E_0(x_t), the cheapest detector in the paper
                           (Sec. 6.3) - one eigendecomposition per step.
 """

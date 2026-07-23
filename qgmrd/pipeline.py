@@ -1,8 +1,8 @@
 """End-to-end embedding: feature frame -> observable time series.
 
 v0 uses a single global fit of the scaler and PCA (offline). The paper's
-causal per-crisis preprocessing (fit only on pre-crisis rows) is the honest
-walk-forward upgrade for v1; see README. Labelling this clearly avoids
+causal per-crisis preprocessing (fit only on pre-crisis rows) is implemented
+in scripts/causal_eval.py (Task 2); see README. Labelling this clearly avoids
 overclaiming the current results as causal.
 """
 

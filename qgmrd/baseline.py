@@ -5,7 +5,8 @@ posterior probability of the high-variance state, to be compared against the
 geometric observables under the same Cohen's d crisis-window metric.
 
 Note: like the paper's RF baseline, this is fit globally here (v0). A causal
-variant that fits only on pre-crisis data is the fair walk-forward benchmark.
+variant that fits only on pre-crisis data (the fair benchmark) is implemented
+in scripts/causal_eval.py (Task 2).
 """
 
 from __future__ import annotations
