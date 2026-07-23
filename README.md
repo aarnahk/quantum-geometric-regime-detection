@@ -6,13 +6,35 @@ pipeline for detecting market regime shifts (Hammond 2026,
 Quantum Fisher Information and the Cramer-Rao bound as estimation on a
 statistical manifold.
 
-**Status: v3.** The two observables that fall out of a single
-eigendecomposition per timestep — spectral entropy and reduced-density-matrix
-purity — are implemented, causally z-scored, and benchmarked against a
-Gaussian HMM. Berry-phase rate and the explicit QFI / Cramer-Rao layer are
-scoped for v1-v2 (see roadmap). Nothing here claims prediction: following the
-source paper, these are *contemporaneous detection* observables, not
-forecasters.
+**Status: v3.** Seven channels are implemented and causally z-scored: spectral
+entropy, reduced-density-matrix purity, ground-state energy, Berry-phase rate,
+QFI log-determinant, and a novel SLD mixed-state QFI channel — benchmarked
+against a Gaussian HMM. The quantum-metric identity 4g = F_Q is verified
+numerically. Nothing here claims prediction: following the source paper, these
+are *contemporaneous detection* observables, not forecasters.
+
+## Results (SPY/DIA, offline event study)
+
+Cohen's |d|, COVID-2020 window vs. rest. **Offline**: preprocessing is fit on
+all data, so these measure crisis-window separability (an event study), not
+causal out-of-sample detection. The causal walk-forward version is the v4
+milestone.
+
+| method | type | \|d\| |
+|---|---|---|
+| Gaussian HMM (high-var prob) | baseline | 1.15 |
+| Reduced purity | geometric v0 | 1.15 |
+| Spectral entropy | geometric v0 | 1.01 |
+| Ground energy E0 | geometric v2 | 0.96 |
+| Berry phase rate | geometric v2 | 0.71 |
+| SLD mixed-state QFI (w=20) | geometric v3 | 0.53 |
+| QFI log-det | geometric v2 | 0.10 |
+
+On COVID (a volatility-driven crash), volatility-sensitive channels lead, as
+expected; the geometric channels span medium-to-large effects and no single
+channel dominates — consistent with Hammond (2026). Proposition 2 identity
+verified: corr(g_FD, g_PT) = 1.000000000, max rel. error ~1e-5, confirming
+4g = F_Q via two independent metric computations.
 
 ## What it does
 
@@ -76,20 +98,14 @@ loop between the microscopy estimation theory and the QCML metric.
 
 ## Roadmap
 
-- **v1 — causal walk-forward.** Fit scaler/PCA/operators only on pre-crisis
-  rows; re-evaluate. This is the honest deployment estimate.
-- **v2 — Berry-phase rate + QFI/CRB. DONE.** Plaquette (Wilson-loop) Berry
-  curvature, quantum metric `g` via two independent computations (finite-
-  difference and perturbation-theory), numerical verification of `4 g = F_Q`
-  (corr = 1.000000000, max rel. err ~5e-6), QFI log-pseudo-determinant
-  channel, ground-state-energy channel, and Cramer-Rao bounds
-  `Var(x_a) >= 1/4 [g^+]_aa` via pseudo-inverse. Run
-  `python scripts/run_demo_v2.py`; identities tested in
-  `tests/test_geometry.py`.
-- **v3 — real-crisis panel.** Wire in the paper's crisis windows on SPY/DIA,
-  compute per-crisis d with block-bootstrap CIs.
-- **v4 — orthogonality analysis.** Correlate geometric vs classical channels
-  (the paper's mean |rho| ~ 0.22 result) to demonstrate complementary signal.
+- **v1-v3 — DONE.** Embedding, 7 channels, SLD mixed-state QFI, offline
+  evaluation on real SPY/DIA (see Results). Identities tested in
+  `tests/test_geometry.py` and `tests/test_sld.py`.
+- **v4 — causal walk-forward (next).** Fit scaler/PCA/operators only on
+  pre-crisis rows and re-evaluate — the honest deployment estimate that
+  upgrades every number above from "separability" to out-of-sample detection.
+- **v5 — multi-crisis panel.** Repeat across the paper's crisis windows
+  (2022 rate hikes, 2015 China, 2018 Q4) with block-bootstrap CIs.
 
 ## Layout
 
