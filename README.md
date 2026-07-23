@@ -120,6 +120,34 @@ the `yfinance` default, which has changed across versions; and the package must
 be installed **editable** (`uv pip install -e .`) — a stale non-editable copy
 in `site-packages` will silently shadow the repo.
 
+### Snapshot provenance
+
+| | |
+|---|---|
+| file | `data/spy_dia_close.csv` |
+| SHA-256 | `c8fe62c2bd7a49333d057f15377d6d700751b750e195b8acee443286a227e99f` |
+| rows | 5406 |
+| columns | `SPY`, `DIA` (close) |
+| first / last | 2005-01-03 / 2026-06-30 |
+| source | `yfinance`, `auto_adjust=True` (pinned explicitly) |
+
+```bash
+shasum -a 256 data/spy_dia_close.csv   # must match the value above
+```
+
+Yahoo's terms restrict redistribution, so **this file may be removed from the
+repo later.** If it is, the checksum is what remains useful: it lets you verify
+whether your own fetch reproduces the data these numbers were computed from.
+
+Be aware that **a later fetch will not match** — that is the entire reason the
+snapshot exists. `auto_adjust=True` returns dividend/split-adjusted closes, so
+every distribution SPY and DIA pay after 2026-06-30 retroactively rescales the
+whole history. A fetch in 2027 returns a differently-adjusted 2005–2026 series,
+a different checksum, and slightly different numbers from the ones printed
+here. A mismatch therefore means "the adjustment factors have moved on," not
+necessarily "something is wrong" — but it does mean your numbers and this
+README's numbers are no longer the same computation.
+
 ## Honest scope (what v0 is and isn't)
 
 - Operators are **fixed random Hermitian** (paper-endorsed for detection), not
@@ -369,32 +397,37 @@ for most channels.
 ### Headline
 
 **1 of 28 primary-family tests survives Benjamini–Hochberg FDR at q < 0.05:**
-ground energy `E0` on Rate Hikes 2022 (|d| = 1.61 vs. null median 0.35,
-random-window q = 0.006). Even that clears only **one of its two nulls** after
-correction — its circular-shift q = 0.277, which fails. At α = 0.05 across 28
-tests the expected number of chance survivors is **1.4**, so **one survivor out
-of 28 is barely distinguishable from the expected false-positive rate.** This
-is not a detection result.
+ground energy `E0` on Rate Hikes 2022, |d| = 1.61 against a null median of
+0.35 — where **not one of the 5000 random matched-length windows reached it**
+(the 100th percentile of its own floor; raw p = 0.0002, q = 0.006). At
+α = 0.05 across 28 tests the expected number of chance survivors is **1.4**,
+so **one survivor out of 28 is, as a count, barely distinguishable from the
+expected false-positive rate.** This is not a detection result.
 
-**The count is right, but it understates this particular hit, and saying so is
-part of reporting symmetrically.** Under a true null, chance survivors scatter
-near the q ≈ 0.05 boundary — marginal is what they look like by construction.
-This one lands at **q = 0.006**, roughly an order of magnitude deeper, on a raw
-p = 0.0002: **not one of the 5000 random windows matched it** (100th percentile
-of its own floor). A hit that deep in the tail is atypical for a chance
-survivor, and "1 vs. 1.4 expected" — a statement about counts — does not
-capture where in the tail the one landed.
+**But the count understates this particular hit, and saying so is part of
+reporting symmetrically.** Under a true null, chance survivors scatter near the
+q ≈ 0.05 boundary — marginal is what they look like by construction. This one
+is not marginal: **no null window out of 5000 reached it.** A hit that deep in
+the tail is atypical for a chance survivor, and "1 vs. 1.4 expected" — a
+statement about counts — says nothing about where in the tail the one landed.
 
-Two things keep the verdict at "not a detection result": it fails the
-circular-shift null after correction, and it is a single window with no CI.
-Worth being explicit about the first, since our own conservatism drives it —
-only ~0.3% of circular shifts exceeded the real value (raw p ≈ 0.003), but the
-N_eff floor raises the reported p to 0.020 because with N_eff ≈ 50 the
-resolution genuinely is not there. We keep the floored value; it is the honest
-one. **Consequence for planning: `E0` on the rate-driven crisis is the single
-result most worth prioritizing in the multi-crisis panel**, and it is
-pre-registered here as the hypothesis to test rather than something to
-rediscover after the fact.
+**The circular-shift null is indeterminate here, not a failure.** Its reported
+q = 0.277 must not be read as the shift test rejecting `E0`. About 0.3% of
+circular shifts exceeded the real value (raw p ≈ 0.003, which would survive FDR
+comfortably); we then floor the p-value at 1/(N_eff+1) ≈ 0.020, because with
+N_eff ≈ 50 the shift null cannot resolve below that. **A floored p-value is not
+a measurement — it means "at most 0.020, cannot resolve lower."** So the shift
+null did not adjudicate `E0` in either direction, and **what prevents
+adjudication is our own conservatism, not the data.** We still report the
+floored value: quoting the raw 0.003 would be false precision on a null whose
+effective sample size is 50. But a bound must be read as a bound.
+
+What does keep the verdict at "not a detection result" is simpler and does not
+depend on the shift null at all: **a single window, no CI, and no replication
+across crises.** One window cannot establish a channel. **Consequence for
+planning: `E0` on the rate-driven crisis is the single result most worth
+prioritizing in the multi-crisis panel**, and it is pre-registered here as the
+hypothesis to test rather than something to rediscover after the fact.
 
 ### Primary family (COVID 2020 + Rate Hikes 2022)
 
