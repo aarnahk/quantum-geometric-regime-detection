@@ -222,32 +222,59 @@ the "Cohen's *d* is too coarse to see series-level change" failure mode is
 0.78–0.90, i.e. the perturbation reaches the series there — but China is
 uninterpretable for the separate reason above.)
 
-**Reduced purity's point estimate barely moves** (≤ 0.05 in every window).
-This **diverges from Hammond**, who reports reduced purity degrading from
-*d* ≈ 0.83 to ≈ 0.26 *once preprocessing is restricted to past data only* —
-the same restriction this script implements. We do not reproduce that collapse
-under the mechanism he names, and do not claim to know why. Candidates, left
-open:
+**Reduced purity shows no collapse under causal fitting** — its point estimate
+stays high (1.13 / 0.90 / 0.94, ≤ 0.05 from the offline values). The right
+comparison is Hammond's Table 3 reduced-purity median of *d* ≈ 0.83, which is
+**already a per-crisis past-fit number** (his §5.1: scaler, PCA, *and*
+operators fit only on pre-crisis data) — the same protocol structure
+`causal_eval.py` uses. All three of our causal values *exceed* that median, but
+"above" is not self-evidently good: these are three point estimates from a
+materially different pipeline set against a 17-crisis median. The differences
+are real, not cosmetic:
 
-- **Feature enrichment differs.** Hammond enriches to ~52 features → 15 PCA
-  components; this repo uses 11 raw features → 8. A coarser feature set over a
-  smaller Hilbert space may not carry the factor structure whose breakdown
-  drives his collapse.
-- **"Frozen holdout" may not mean per-crisis causal refitting.** If his figure
-  comes from a single train/test split rather than a per-crisis expanding
-  refit, it measures a different quantity than this script's per-crisis
-  past-fit.
-- **Sample size.** Three crises here vs. his 17 (see the no-CIs caveat).
-- **Optimism-bias drain.** Hammond documents +0.415 *d* of HPO optimism bias.
-  If his offline 0.83 is a tuned number, part of the drop to 0.26 is that
-  inflation leaving. This repo's features were fixed *a priori* and never
-  tuned — no inflation to lose, so a stable causal number is what an un-tuned
-  pipeline would predict.
-- **Window definition.** Where a crisis window is mostly calm, Cohen's *d* is
-  diluted and unstable — the China column above is the extreme case (control
-  blind at 0.04). This bears on China specifically; it does not explain the
-  stability on COVID or 2022, where the control sees the crisis clearly
-  (HMM 1.15, 1.07).
+- **Features:** 11 raw features here vs. his ~52 enriched.
+- **Dimensionality:** 8 PCA components here vs. his 15.
+- **Crisis panel:** three crises here, a subset of his 17.
+- **Operator treatment:** Hammond fits operators on pre-crisis data too (his
+  §5.1 names scaler, PCA, *and* operators; Table F.9 lists op ∈ {rnd, pca},
+  i.e. data-dependent and refit per crisis). Ours are fixed seeded random
+  Hermitian, never fit to data at all — cleaner for causality (zero look-ahead
+  by construction; see "Honest scope" and the operator note), but a genuine
+  protocol difference, not a match.
+
+A similar number out of a different feature set, dimensionality, crisis panel,
+and operator treatment is weaker evidence than the numerical closeness
+suggests — as easily coincidence as replication. Honest ceiling: **no collapse
+observed; values in the same range as his Table 3 median, under a protocol
+matching his in structure but not in features, dimensionality, crisis panel, or
+operator treatment.**
+
+The often-quoted *d* ≈ 0.26 for reduced purity is a **different protocol**, not
+this one: Hammond's §5.2 "frozen holdout" — an expanding-window fit anchored at
+2005, one-year evaluation windows, monthly operator refits, scored *only on the
+evaluation year* (7 crisis pairs). That scoring change closes **Gap 2** (no
+longer comparing the crisis window against all other days, including future
+ones), not just Gap 1. This repo has not built that protocol — it is roadmap
+item 5 (expanding-window walk-forward). So 0.26 is out of Task 2's reach by
+construction, not a number we aimed at and missed. (The paper is internally
+inconsistent on the mechanism: §5.2 attributes the drop to "restricting
+preprocessing to past data only," but the Table 3 caption says its 0.83
+*already* restricts preprocessing to past data. The protocol difference —
+expanding-window plus eval-year-only scoring — is what separates 0.26 from
+0.83, not the past-fit restriction. Recorded as a reading of the source, not a
+criticism.)
+
+**Purity as a "leading" channel — a caveat from Hammond's own null test, and
+one we have not run.** Hammond's null-model analysis (§5.1) found reduced
+purity's real median *d* = 0.73 against a null median of ~0.53, 95% interval
+[0.30, 0.89], **p = 0.18** — its offline lead was never established as
+distinguishable from the noise floor, and the 0.26 figure sits *below* the
+null's lower bound of 0.30. This bears directly on the table above, where
+purity is among the top channels: it can lead a ranking without clearing noise.
+And it applies more sharply to us — **we have no null model at all.** Hammond
+at least tested against random-window and circular-shift nulls; none of our
+seven channels has been tested against any null yet (roadmap). Read every |d|
+here with that missing floor in mind.
 
 **Favorable result, reported for the same reason unfavorable ones are.** On
 the rate-driven 2022 crisis the geometric channels lead the table — ground
