@@ -64,6 +64,13 @@ Runs on the CAUSAL (past-fit) z-scored series -- the same per-crisis
 preprocessing as scripts/causal_eval.py (HANDOFF Sec. 7). The nulls are pure
 score-series transforms: no re-embedding, no re-fitting of the pipeline.
 
+Crisis windows come from the shared registry (``qgmrd/crises.py``): Hammond
+Table G.10 extended by +/-10 trading days, applied uniformly repo-wide. Numbers
+here are under that convention, not the earlier ad-hoc COVID window.
+
+The 15-crisis panel version of this test -- nulling the MEDIAN |d| across
+crises, which is far better powered -- is scripts/multi_crisis_panel.py.
+
     python scripts/null_model.py
 """
 
@@ -73,7 +80,6 @@ import os
 import sys
 
 import numpy as np
-import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, normalize
 
@@ -81,7 +87,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from causal_eval import (  # noqa: E402  (shared pipeline pieces)
     CRISES,
-    CUTOFF_BUFFER_DAYS,
     MIN_PRECUTOFF_ROWS,
     N,
     SEED,
@@ -89,34 +94,29 @@ from causal_eval import (  # noqa: E402  (shared pipeline pieces)
     raw_channels,
     zscored,
 )
+from qgmrd.crises import context as crisis_context  # noqa: E402
 from qgmrd.data import load_prices  # noqa: E402
 from qgmrd.features import build_features  # noqa: E402
 from qgmrd.operators import random_hermitian_operators  # noqa: E402
 
 N_WINDOW_DRAWS = 5000        # random-window null (a) placements
-PRIMARY_CRISES = {"COVID 2020", "Rate Hikes 2022"}   # FDR family; China is exploratory
+PRIMARY_CRISES = {"2020 COVID", "2022 Rate Hikes"}   # FDR family; China is exploratory
 FDR_ALPHA = 0.05
 
 
-def causal_channels_for_crisis(features, ops, returns, idx, start):
+def causal_channels_for_crisis(features, ops, returns, ctx):
     """Causal (past-fit) z-scored channels for one crisis.
 
-    Fits scaler + PCA on rows strictly before ``crisis_start - buffer`` only,
+    Fits scaler + PCA on rows strictly before the crisis context's cutoff only,
     transforms the full timeline through them (same protocol as causal_eval),
-    and returns the seven causal z-scored channel series plus the pre-cutoff
-    row count.
+    and returns the seven causal z-scored channel series.
     """
-    crisis_start = pd.Timestamp(start)
-    cutoff = crisis_start - pd.tseries.offsets.BDay(CUTOFF_BUFFER_DAYS)
-    pre = (idx < cutoff).values if hasattr(idx < cutoff, "values") else (idx < cutoff)
-    n_pre = int(pre.sum())
-
+    pre = ctx["pre"]
     p = min(8, features.shape[1])
     sc = StandardScaler().fit(features.values[pre])
     pc = PCA(n_components=p, random_state=SEED).fit(sc.transform(features.values[pre]))
     Xp = normalize(pc.transform(sc.transform(features.values)))
-    causal = zscored(raw_channels(Xp, ops, returns, hmm_fit=pre))
-    return causal, n_pre
+    return zscored(raw_channels(Xp, ops, returns, hmm_fit=pre))
 
 
 def integrated_autocorr_time(x: np.ndarray) -> tuple[float, float]:
@@ -248,18 +248,21 @@ def main() -> None:
     primary_p: list[float] = []
     primary_key: list[str] = []
 
-    for name, start, end in CRISES:
-        causal, n_pre = causal_channels_for_crisis(features, ops, returns, idx, start)
-        if n_pre < MIN_PRECUTOFF_ROWS:
-            print(f"\n### {name}  ({start} -> {end})")
-            print(f"  SKIPPED: only {n_pre} pre-cutoff rows (< {MIN_PRECUTOFF_ROWS}).")
+    for name, start_month, end_month in CRISES:
+        ctx = crisis_context(idx, start_month, end_month)
+        if ctx["n_pre"] < MIN_PRECUTOFF_ROWS:
+            print(f"\n### {name}  ({start_month}..{end_month} +/-10td)")
+            print(f"  SKIPPED: only {ctx['n_pre']} pre-cutoff rows "
+                  f"(< {MIN_PRECUTOFF_ROWS}).")
             continue
 
-        crisis_mask = ((idx >= pd.Timestamp(start)) & (idx <= pd.Timestamp(end)))
-        crisis_mask = crisis_mask.values if hasattr(crisis_mask, "values") else crisis_mask
+        causal = causal_channels_for_crisis(features, ops, returns, ctx)
+        crisis_mask = ctx["mask"]
 
         tag = "PRIMARY" if name in PRIMARY_CRISES else "EXPLORATORY (excluded from FDR)"
-        print(f"\n### {name}  ({start} -> {end})   [{tag}]")
+        print(f"\n### {name}  ({start_month}..{end_month} +/-10td: "
+              f"{ctx['start'].date()} -> {ctx['end'].date()}, "
+              f"{ctx['n_window']} days)   [{tag}]")
         print(f"{'channel':<20}{'dir':>4}{'|d|':>7}"
               f"{'(a)med':>8}{'(a)95%CI':>16}{'(a)pct':>8}{'(a)p':>9}"
               f"{'(b)med':>8}{'(b)pct':>8}{'(b)p':>9}{'tau':>7}{'Neff':>7}")

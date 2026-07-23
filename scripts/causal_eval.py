@@ -6,8 +6,13 @@ study, not causal detection: the preprocessing already "knows" where the crisis
 is. This script removes exactly that look-ahead and measures how much signal
 survives.
 
+Crisis windows come from the shared registry in ``qgmrd/crises.py``: Hammond's
+Table G.10 windows extended by +/-10 trading days (his Sec. 4.1 convention),
+applied uniformly across this repo. An earlier ad-hoc COVID window was replaced
+by that convention; every number this script prints is under the new one.
+
 Protocol, per crisis:
-  1. cutoff = crisis_start - 10 business days.
+  1. cutoff = extended_window_start - 10 business days.
   2. Fit StandardScaler + PCA on rows with index < cutoff ONLY. The 10-day
      buffer exists because features include 20-day rolling volatility; a strict
      same-day cutoff would let crisis vol leak backward through the rolling
@@ -34,7 +39,6 @@ detection (HANDOFF Sec. 2b). Do not read the causal |d| as a deployment number.
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, normalize
 
@@ -44,6 +48,9 @@ from qgmrd.channels import (
     ground_energy_series,
     qfi_logdet_series,
 )
+from qgmrd.crises import LEGACY_THREE, MIN_PRECUTOFF_ROWS
+from qgmrd.crises import context as crisis_context
+from qgmrd.crises import get as crisis_get
 from qgmrd.data import load_prices
 from qgmrd.embedding import ground_state
 from qgmrd.features import build_features
@@ -52,14 +59,11 @@ from qgmrd.operators import random_hermitian_operators
 from qgmrd.sld import sld_qfi_time_series
 from qgmrd.zscore import causal_zscore
 
-# (name, start, end) -- the paper's crisis windows (HANDOFF Sec. 7).
-CRISES = [
-    ("COVID 2020", "2020-02-19", "2020-04-30"),
-    ("Rate Hikes 2022", "2022-01-01", "2022-10-31"),
-    ("China 2015", "2015-07-01", "2015-09-30"),
-]
-CUTOFF_BUFFER_DAYS = 10   # business days before crisis_start to stop fitting
-MIN_PRECUTOFF_ROWS = 200  # skip a crisis with fewer past rows than this
+# (name, start_month, end_month) from the shared registry. Windows are Hammond
+# Table G.10 extended by +/-10 trading days -- see qgmrd/crises.py. These three
+# are the crises Task 2 and the null models were built on; the full 15-crisis
+# panel lives in scripts/multi_crisis_panel.py and uses the same registry.
+CRISES = [crisis_get(name) for name in LEGACY_THREE]
 
 N = 8
 DIM_A = 2
@@ -194,27 +198,25 @@ def main() -> None:
     print("separability (leaky preprocessing removed), not real-time detection.")
     print("=" * 68)
 
-    for name, start, end in CRISES:
-        crisis_start = pd.Timestamp(start)
-        crisis_end = pd.Timestamp(end)
-        cutoff = crisis_start - pd.tseries.offsets.BDay(CUTOFF_BUFFER_DAYS)
-        pre = idx < cutoff
-        n_pre = int(pre.sum())
-
-        mask = (idx >= crisis_start) & (idx <= crisis_end)
-        off_d = d_table(offline, mask.values if hasattr(mask, "values") else mask)
+    for name, start_month, end_month in CRISES:
+        ctx = crisis_context(idx, start_month, end_month)
+        mask, n_pre = ctx["mask"], ctx["n_pre"]
+        window = f"{start_month}..{end_month} +/-10td"
+        off_d = d_table(offline, mask)
 
         if n_pre < MIN_PRECUTOFF_ROWS:
-            print(f"\n### {name}  ({start} -> {end})")
+            print(f"\n### {name}  ({window})")
             print(f"  SKIPPED: only {n_pre} pre-cutoff rows (< {MIN_PRECUTOFF_ROWS}).")
             continue
+
+        pre, cutoff = ctx["pre"], ctx["cutoff"]
 
         # ---- causal embedding: fit on pre-cutoff rows, transform full ----
         sc = StandardScaler().fit(features.values[pre])
         pc = PCA(n_components=p, random_state=SEED).fit(sc.transform(features.values[pre]))
         Xp_causal = normalize(pc.transform(sc.transform(features.values)))
         causal = zscored(raw_channels(Xp_causal, ops, returns, hmm_fit=pre))
-        cau_d = d_table(causal, mask.values if hasattr(mask, "values") else mask)
+        cau_d = d_table(causal, mask)
 
         div = fit_divergence(scaler, pca, sc, pc)
 
@@ -225,8 +227,9 @@ def main() -> None:
         # direct test of whether the two embeddings agree where channels read.
         row_cos = np.sum(Xp_offline * Xp_causal, axis=1)  # both rows unit-norm
 
-        print(f"\n### {name}  ({start} -> {end})   cutoff {cutoff.date()}, "
-              f"{n_pre} pre-cutoff rows")
+        print(f"\n### {name}  ({window}: {ctx['start'].date()} -> "
+              f"{ctx['end'].date()}, {ctx['n_window']} days)   "
+              f"cutoff {cutoff.date()}, {n_pre} pre-cutoff rows")
         print(f"  preprocessing params: max |Δmean|/|mean| = {div['max_mean_reldiff']:.3f}, "
               f"max |Δscale|/|scale| = {div['max_scale_reldiff']:.3f}, "
               f"min |cos| PCA axes = {div['min_component_cos']:.3f}")
