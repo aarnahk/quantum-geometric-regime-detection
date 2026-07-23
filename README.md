@@ -96,11 +96,51 @@ shortcut `4g = F_Q` cannot express. In the w=1 limit the SLD-QFI provably
 reduces to `4 g_aa` (tests/test_sld.py::test_pure_state_limit), closing the
 loop between the microscopy estimation theory and the QCML metric.
 
+## Channel correlation matrix (Open Question 1, answered)
+
+```bash
+python scripts/channel_correlations.py
+```
+
+Pairwise Pearson and Spearman correlation of all seven causal z-scored
+channels on real SPY/DIA, over the full series (not just the COVID window) —
+this tests day-to-day agreement between detectors, a stronger redundancy
+check than co-spiking during one crisis.
+
+**SLD's largest |correlation| with any other channel is ~0.13** (vs.
+spectral entropy), with every other SLD pair below that — decorrelated even
+relative to Hammond's reported mean |rho| ~ 0.22 between geometric and
+classical channel families. Pearson and Spearman agree closely on every SLD
+pair (largest gap 0.06), so this isn't an artifact of a few extreme days.
+**Answer: the SLD channel is empirically non-redundant, not a repackaging of
+the pure-state channels it generalizes.** Combined with its d = 0.53 on
+COVID (real, if mid-pack, separability), this is the empirical case for the
+extension — not just the pure-state-limit proof.
+
+For context, the other six channels correlate with each other much more
+strongly (e.g. reduced purity vs. `E0` at -0.90, Berry phase rate vs. QFI
+log-det at ~0.70-0.74, spectral entropy vs. the HMM baseline at ~0.64-0.71) —
+they're largely re-detecting the same crisis from different angles, which is
+what makes SLD's near-zero correlation with all of them notable rather than
+just noisy.
+
+Caveat: Pearson and Spearman diverge by >0.1 for two pairs, both involving
+Berry phase rate (vs. spectral entropy, vs. HMM) — a monotonic-but-nonlinear
+relationship, plausibly because Berry rate is a step-difference observable.
+Doesn't affect the SLD conclusion but is a caveat on Berry-rate comparisons
+specifically.
+
+This result is offline (global scaler/PCA fit, same caveat as the table
+above) — it answers whether channels agree with each other, not whether any
+one of them is causally clean; that's Task 2.
+
 ## Roadmap
 
 - **v1-v3 — DONE.** Embedding, 7 channels, SLD mixed-state QFI, offline
-  evaluation on real SPY/DIA (see Results). Identities tested in
-  `tests/test_geometry.py` and `tests/test_sld.py`.
+  evaluation on real SPY/DIA (see Results), channel correlation matrix
+  answering Open Question 1 (SLD is decorrelated, not redundant — see
+  above). Identities tested in `tests/test_geometry.py` and
+  `tests/test_sld.py`.
 - **v4 — causal walk-forward (next).** Fit scaler/PCA/operators only on
   pre-crisis rows and re-evaluate — the honest deployment estimate that
   upgrades every number above from "separability" to out-of-sample detection.
