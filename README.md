@@ -36,6 +36,17 @@ channel dominates — consistent with Hammond (2026). Proposition 2 identity
 verified: corr(g_FD, g_PT) = 1.000000000, max rel. error ~1e-5, confirming
 4g = F_Q via two independent metric computations.
 
+Channel correlation (SPY/DIA, causal z-scores, Pearson and Spearman): the
+SLD mixed-state QFI channel correlates with every other channel at
+|ρ| < 0.13 (both metrics), roughly half Hammond's own geometric-classical
+decorrelation benchmark (mean |ρ| ≈ 0.22). Its highest correlation is with
+spectral entropy (ρ = 0.122 Pearson, 0.127 Spearman) — its closest
+conceptual relative — and even that is well within noise. Combined with its
+COVID Cohen's d = 0.53 (a real, medium effect, not noise-level), this
+answers Open Question 1: the mixed-state generalization is empirically
+distinct from the pure-state channels, not merely a redundant formalism
+exercise reusing spectral information under a different name.
+
 ## What it does
 
 For each trading day, a rolling feature vector `x_t` defines an error
