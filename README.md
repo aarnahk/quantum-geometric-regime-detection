@@ -107,6 +107,18 @@ shortcut `4g = F_Q` cannot express. In the w=1 limit the SLD-QFI provably
 reduces to `4 g_aa` (tests/test_sld.py::test_pure_state_limit), closing the
 loop between the microscopy estimation theory and the QCML metric.
 
+**Novelty, verified against source (not just paper text).** Cloned Hammond's
+repo and grepped `qcml_geometry/*.py` for `sld`, `symmetric_log`,
+`logarithmic_derivative`: zero matches. His nearest neighbor,
+`QuantumRelativeEntropyDetector`, builds a mixed state the same way this
+repo does — an averaged `sum |psi_s><psi_s|` over past states — but computes
+quantum relative entropy from it, not SLD-based QFI. Those are different
+Riemannian metrics (Kubo–Mori vs. SLD/Bures) that coincide only when states
+commute, so this is a source-confirmed distinction, not a
+paper-vs-paper inference. One design difference: his reference state uses an
+expanding window (all past states), this repo's `rho_t` uses a fixed
+rolling window `w`.
+
 ## Channel correlation matrix (Open Question 1, answered)
 
 ```bash
