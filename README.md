@@ -9,7 +9,7 @@ statistical manifold.
 **Reproduction vs. extension — stated plainly.** Five of the six geometric
 channels — spectral entropy, reduced-density-matrix purity, ground-state energy
 (used here as a full detector channel, though the source paper treats ground
-energy as an incidental quantity rather than a headline detector — flagged
+energy only as an incidental quantity in its §6.3 rather than a headline detector — flagged
 because it is the one channel that ever clears its floor in the count analysis
 below), Berry-phase rate, and the QFI log-determinant — sit inside Hammond's
 published channel taxonomy. They are **reproductions, not original in concept**:
@@ -103,7 +103,7 @@ feature windows.
 
 ## Results (SPY/DIA, offline event study)
 
-Cohen's |d|, COVID-2020 window vs. rest. **Offline**: preprocessing is fit on
+Cohen's |d|, COVID-2020 window (G.10 ±10) vs. rest. **Offline**: preprocessing is fit on
 all data, so these measure crisis-window separability (an event study), not
 causal out-of-sample detection. The causal (past-fit) preprocessing version is
 below (Task 2); closing the remaining event-study metric gap (Gap 2) is the
