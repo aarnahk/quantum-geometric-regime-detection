@@ -6,20 +6,35 @@ pipeline for detecting market regime shifts (Hammond 2026,
 Quantum Fisher Information and the Cramer-Rao bound as estimation on a
 statistical manifold.
 
-**Status: v5.5.** Seven channels are implemented and causally z-scored: spectral
-entropy, reduced-density-matrix purity, ground-state energy, Berry-phase rate,
-QFI log-determinant, and a novel SLD mixed-state QFI channel — benchmarked
-against a Gaussian HMM baseline, evaluated with causal (past-fit) preprocessing
-across a 15-crisis panel with per-channel noise floors, and checked against two
-**positive controls**. The quantum-metric identity 4g = F_Q is verified
-numerically. Nothing here claims prediction: following the source paper, these
-are *contemporaneous detection* observables, not forecasters.
+**Reproduction vs. extension — stated plainly.** Five of the six geometric
+channels — spectral entropy, reduced-density-matrix purity, ground-state energy
+(used here as a full detector channel, though the source paper treats ground
+energy as an incidental quantity rather than a headline detector — flagged
+because it is the one channel that ever clears its floor in the count analysis
+below), Berry-phase rate, and the QFI log-determinant — sit inside Hammond's
+published channel taxonomy. They are **reproductions, not original in concept**:
+implemented independently from the paper's equations (his source code was never
+read while building them), but not claimed as novel. Only the **SLD mixed-state
+QFI channel** is an extension beyond his framework (see
+[v3](#v3-sld-mixed-state-qfi-novel-channel)). The same skepticism is applied to
+the extension as to the reproductions throughout.
+
+**Status: v5.5.** The detector set is **six geometric channels** — the five
+reproductions above plus the novel SLD channel — and **one classical baseline**,
+a Gaussian HMM; all seven are causally (past-fit) z-scored. They are evaluated
+across a 15-crisis panel with per-channel noise floors and two **positive
+controls**, one of which — 20-day realized volatility — rides in the panel and
+null tables as an **eighth series outside the FDR family**, an instrument check
+rather than a detector under test. The quantum-metric identity 4g = F_Q is
+verified numerically. Nothing here claims prediction: following the source
+paper, these are *contemporaneous detection* observables, not forecasters.
 
 ## Headline finding: this test has almost no power
 
 **The evaluation used here does not have the resolution to confirm detection of
 anything on this panel.** Under Benjamini–Hochberg correction across the 14-test
-family, rank 1 requires p ≤ 0.05/14 = 0.0036 — which, for the integer-coarse
+family (seven detectors — six geometric channels plus the Gaussian HMM baseline
+— × two nulls), rank 1 requires p ≤ 0.05/14 = 0.0036 — which, for the integer-coarse
 count statistic, means a channel must clear its own floor in **5 of 15 crises**,
 against **0.75 expected by chance**. That threshold is the ceiling, and it holds
 regardless of what any detector achieves.
@@ -274,8 +289,9 @@ rolling window `w`.
 python scripts/channel_correlations.py
 ```
 
-Pairwise Pearson and Spearman correlation of all seven causal z-scored
-channels on real SPY/DIA, over the full series (not just the COVID window) —
+Pairwise Pearson and Spearman correlation of all seven causally z-scored
+detectors (six geometric channels plus the Gaussian HMM baseline) on real
+SPY/DIA, over the full series (not just the COVID window) —
 this tests day-to-day agreement between detectors, a stronger redundancy
 check than co-spiking during one crisis.
 
@@ -353,16 +369,20 @@ Offline → causal Cohen's |d| (SPY/DIA), **G.10 ±10 windows**:
 | Gaussian HMM | 0.78 → 0.75 | 1.06 → 1.06 | 0.08 → 0.09 |
 
 **China 2015 is uninterpretable and is not analyzed channel-by-channel.** The
-HMM control scores 0.08 offline / 0.09 causal — it essentially cannot see a
-crisis in SPY/DIA over Jun–Oct 2015 (mostly quiet, with one violent week around
-Aug 20–26 that Cohen's *d* dilutes against the calm remainder). Independently,
-the causal embedding agrees least with the offline one there (row-wise cosine
-mean 0.93, min 0.43 — some days near-orthogonal). With a blind control and the
-largest embedding divergence, no individual channel's swing in that column is
-trustworthy; those numbers are reported for completeness only. The panel below
-shows this is **not** a China-specific quirk: **5 of 15 crises have a blind HMM
-control**, so a third of Hammond's post-2005 window list is simply not visible
-in SPY/DIA.
+Gaussian HMM baseline scores 0.08 offline / 0.09 causal — it essentially cannot
+see a crisis in SPY/DIA over Jun–Oct 2015 (mostly quiet, with one violent week
+around Aug 20–26 that Cohen's *d* dilutes against the calm remainder).
+Independently, the causal embedding agrees least with the offline one there
+(row-wise cosine mean 0.93, min 0.43 — some days near-orthogonal). With a blind
+baseline and the largest embedding divergence, no individual channel's swing in
+that column is trustworthy; those numbers are reported for completeness only.
+The panel below shows this is **not** a China-specific quirk: under the
+**realized-volatility control**, the panel script flags **6 of 15 crises at
+|d| < 0.2** as barely present in SPY/DIA (five of them below 0.1), so roughly
+40% of Hammond's post-2005 window list scarcely registers in this instrument
+set. (The HMM baseline goes blind on a different, overlapping set of crises —
+see the panel's visibility discussion, where the two instruments' disagreement
+is itself the point.)
 
 **Does the preprocessing change reach the channels?** (`causal_eval.py` prints
 all of this.) The preprocessing *parameters* diverge modestly and in a
@@ -494,8 +514,10 @@ for most channels.
 
 ### Headline
 
-**1 of 28 primary-family tests survives Benjamini–Hochberg FDR at q < 0.05:**
-ground energy `E0` on Rate Hikes 2022, |d| = 1.57 against a null median of
+**1 of 28 primary-family tests survives Benjamini–Hochberg FDR at q < 0.05**
+(the family is seven detectors — six geometric channels plus the Gaussian HMM
+baseline — × two crises × two nulls; the realized-vol control is reported
+separately, outside it): ground energy `E0` on Rate Hikes 2022, |d| = 1.57 against a null median of
 0.31 — where **not one of the 5000 random matched-length windows reached it**
 (the 100th percentile of its own floor; raw p = 0.0002, q = 0.006). At
 α = 0.05 across 28 tests the expected number of chance survivors is **1.4**,
@@ -585,7 +607,8 @@ cases with opposite consequences:**
   test is fine and `E0` stands.
 
 **The numbers favour (b), and rule out the persistence route within it.** On
-2022 realized vol's floor (0.39) sits *mid-pack* among the eight channels
+2022 realized vol's floor (0.39) sits *mid-pack* among the eight series (the
+seven detectors plus the realized-vol control itself)
 (range 0.23–0.55) and its tau (186) is likewise mid-pack (range 26–417) — so its
 failure is **not** explained by an unusually hard bar. What is small is its
 *signal*: |d| = 0.53, the 69th percentile, and six channels exceed it on that
@@ -976,11 +999,26 @@ and **found none (p = 0.31)**, so any such pattern across 15 crises is almost
 certainly noise.
 
 The realized-vol column is a **visibility reference**: it shows which crises
-exist at all in this instrument. **5 of 15 have a control |d| below 0.2** —
-2015 China (0.06), 2018 Q4 (0.06), 2019 Repo (0.06), 2018 Volmageddon (0.07),
-2023 SVB (0.09) — meaning a third of Hammond's post-2005 list is barely present
-in SPY/DIA. Where the control is ~0.1, no channel's number in that row should be
+exist at all in this instrument. The panel script flags **6 of 15 crises at
+control |d| < 0.2** — 2010 Flash Crash (0.14), 2015 China (0.06), 2018
+Volmageddon (0.07), 2018 Q4 (0.06), 2019 Repo (0.06), 2023 SVB (0.09) — five of
+them below 0.1, so roughly 40% of Hammond's post-2005 list is barely present in
+SPY/DIA. Where the control is ~0.1, no channel's number in that row should be
 read as a miss.
+
+**Two visibility instruments disagree — and the disagreement is the point.** The
+Gaussian HMM baseline has its own blind set, and it is *not* the vol control's.
+The two agree the market is quiet on China (vol 0.06 / HMM 0.09), Volmageddon
+(0.07 / 0.06) and 2019 Repo (0.06 / 0.09), but part ways sharply elsewhere: the
+HMM goes dark on 2007 (|d| = 0.17) and 2024 Carry (0.16) where the vol control
+screams on 2007 (2.20) and sees 2024 (0.32); conversely the vol control is blind
+on 2018 Q4 (0.06) and SVB (0.09), both of which the HMM registers (0.83, 0.34).
+Neither is "the" visibility measure — that two narrow instruments disagree about
+which crises even register is itself a fact about how thin SPY/DIA is, not a
+contradiction. (The 2007 split is the short-normalization-history artifact
+flagged under Null-model methodology; realized vol's 2.20 there is implausibly
+high on its face.) The vol control is the one carried in the FDR-external column
+above because it fits nothing; the HMM figure is its own baseline blind set.
 
 **All 15 are kept, unfiltered.** The count statistic calibrates a floor *per
 crisis*, so an invisible crisis contributes null draws rather than false
