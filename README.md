@@ -237,6 +237,28 @@ here. A mismatch therefore means "the adjustment factors have moved on," not
 necessarily "something is wrong" — but it does mean your numbers and this
 README's numbers are no longer the same computation.
 
+### Snapshot provenance — multi-asset panel (Task 3)
+
+A second pinned snapshot, added **alongside** the SPY/DIA one (never overwriting
+it, so both panels reproduce). See "[Multi-asset panel (Task 3)](#multi-asset-panel-task-3--a-null-result-and-the-control-it-redirects-to)" below.
+
+| | |
+|---|---|
+| file | `data/multi_asset_close.csv` |
+| SHA-256 | `0586e5b64810f87074cef33509d49f90971c74bb7701645193ba20f712958dd8` |
+| rows | 4864 |
+| columns | `SPY`, `TLT`, `UUP`, `GLD` (close) |
+| first / last | 2007-03-01 / 2026-06-30 |
+| source | `yfinance`, `auto_adjust=True` (pinned explicitly) |
+
+```bash
+shasum -a 256 data/multi_asset_close.csv   # must match the value above
+```
+
+The frame begins 2007-03-01 because UUP (the dollar leg) has no earlier history;
+this is why the multi-asset panel drops the 2007 Quant Meltdown and runs **14**
+crises, not 15. The same adjustment caveat as the SPY/DIA snapshot applies.
+
 ## Honest scope (what this is and isn't)
 
 - Operators are **fixed random Hermitian** (paper-endorsed for detection), not

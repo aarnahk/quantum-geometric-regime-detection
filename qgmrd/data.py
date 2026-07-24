@@ -26,6 +26,15 @@ DATA_START = "2005-01-01"
 DATA_END = "2026-07-01"
 CACHE_PATH = Path(__file__).resolve().parent.parent / "data" / "spy_dia_close.csv"
 
+# Multi-asset panel (HANDOFF Task 3): a SECOND pinned snapshot, added alongside
+# the SPY/DIA one (never overwriting it, so existing results still reproduce).
+# UUP inception is 2007-02, so an all-columns frame starts ~2007 and the panel
+# drops the 2007 Quant Meltdown -- pre-registered as a 14-crisis panel.
+MULTI_ASSET_TICKERS = ("SPY", "TLT", "UUP", "GLD")
+MULTI_ASSET_CACHE_PATH = (
+    Path(__file__).resolve().parent.parent / "data" / "multi_asset_close.csv"
+)
+
 
 def synthetic_prices(
     T: int = 2000,
@@ -106,6 +115,34 @@ def load_prices(tickers=("SPY", "DIA"), start=DATA_START, end=DATA_END,
         close = load_yfinance(tickers, start=start, end=end)
         CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         close.to_csv(CACHE_PATH)
+
+    return close.loc[(close.index >= pd.Timestamp(start))
+                     & (close.index < pd.Timestamp(end))]
+
+
+def load_multi_asset_prices(tickers=MULTI_ASSET_TICKERS, start=DATA_START,
+                            end=DATA_END, refresh=False):
+    """Pinned loader for the multi-asset panel snapshot (HANDOFF Task 3).
+
+    Same reproducibility contract as ``load_prices`` -- reads the committed
+    ``multi_asset_close.csv`` if present, else fetches once and writes it. Kept
+    separate from ``load_prices`` so the SPY/DIA snapshot is never disturbed.
+
+    The fetch drops any date lacking all ``tickers`` (via ``load_yfinance``), so
+    the frame begins when every asset exists (UUP inception, ~2007-02).
+    """
+    tickers = list(tickers)
+    if MULTI_ASSET_CACHE_PATH.exists() and not refresh:
+        close = pd.read_csv(MULTI_ASSET_CACHE_PATH, index_col="Date", parse_dates=True)
+        missing = [t for t in tickers if t not in close.columns]
+        if missing:
+            raise KeyError(f"{MULTI_ASSET_CACHE_PATH.name} lacks {missing}; "
+                           f"re-run with refresh=True")
+        close = close[tickers]
+    else:
+        close = load_yfinance(tickers, start=start, end=end)
+        MULTI_ASSET_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        close.to_csv(MULTI_ASSET_CACHE_PATH)
 
     return close.loc[(close.index >= pd.Timestamp(start))
                      & (close.index < pd.Timestamp(end))]
