@@ -6,25 +6,50 @@ pipeline for detecting market regime shifts (Hammond 2026,
 Quantum Fisher Information and the Cramer-Rao bound as estimation on a
 statistical manifold.
 
-**Status: v5.** Seven channels are implemented and causally z-scored: spectral
+**Status: v5.5.** Seven channels are implemented and causally z-scored: spectral
 entropy, reduced-density-matrix purity, ground-state energy, Berry-phase rate,
 QFI log-determinant, and a novel SLD mixed-state QFI channel — benchmarked
-against a Gaussian HMM, evaluated with causal (past-fit) preprocessing across a
-15-crisis panel with per-channel noise floors and block-bootstrap CIs. The
-quantum-metric identity 4g = F_Q is verified numerically. Nothing here claims
-prediction: following the source paper, these are *contemporaneous detection*
-observables, not forecasters.
+against a Gaussian HMM baseline, evaluated with causal (past-fit) preprocessing
+across a 15-crisis panel with per-channel noise floors, and checked against two
+**positive controls**. The quantum-metric identity 4g = F_Q is verified
+numerically. Nothing here claims prediction: following the source paper, these
+are *contemporaneous detection* observables, not forecasters.
 
-## Headline finding
+## Headline finding: this test has almost no power
 
-Across a **15-crisis panel** with causal (past-fit) preprocessing, **no channel's
-median Cohen's |d| clears its own noise floor** — 0 of 14 tests survive
-Benjamini–Hochberg FDR, against 0.7 expected by chance. That includes the
-Gaussian HMM control, and it includes the two channels that were
-**pre-registered** as hypotheses before the panel was run. See
-"[Multi-crisis panel](#multi-crisis-panel-the-headline-result)" below, which is
-the load-bearing section of this README; everything above it is single-crisis
-work that the panel supersedes.
+**The evaluation used here does not have the resolution to confirm detection of
+anything on this panel.** Under Benjamini–Hochberg correction across the 14-test
+family, rank 1 requires p ≤ 0.05/14 = 0.0036 — which, for the integer-coarse
+count statistic, means a channel must clear its own floor in **5 of 15 crises**,
+against **0.75 expected by chance**. That threshold is the ceiling, and it holds
+regardless of what any detector achieves.
+
+For reference, 20-day realized volatility clears **3 of 15**, p = 0.039 — short
+of the bar. But realized vol is a **narrow** detector: it registers volatility
+spikes only, and its three hits are exactly the three vol events in the panel
+(2007, 2008, COVID). Its 3 is **not** an upper bound on achievable detection —
+it is what a vol-specific detector scores on a panel where only 3 of 15 events
+are vol spikes. A channel that caught those three *plus* two slow-grind crises
+would reach 5 and clear, which is precisely the profile this project's own
+orthogonality result (Task 1, |ρ| < 0.13) predicts a geometric channel should
+have.
+
+So **no confirmatory claim about any channel is reachable on this panel**, and
+none is made. This supersedes an earlier headline ("0 of 14 median tests survive
+FDR ⇒ no channel detects"), which was **wrong**: the identical test says
+realized volatility does not detect crises either. The statistic, not the
+channels, was what that result measured. Details in
+"[Multi-crisis panel](#multi-crisis-panel)"; the correction is worked through in
+"[Why the statistic is the COUNT](#why-the-statistic-is-the-count-and-why-the-median-was-wrong)".
+
+What the harness *can* do is established separately and does hold — **but only
+on volatility events.** On synthetic data with a crisis injected into all 15
+windows it detects comfortably (realized vol q = 0.008, Gaussian HMM q = 0.0032),
+and realized vol validates the real pipeline on the three real vol spikes. **On
+the other 12 crises there is no working positive control** — see "[The harness is
+validated on volatility events only](#the-harness-is-validated-on-volatility-events-only)".
+The code is correct; the resolution, and the reach of the control, are the
+limits.
 
 ## Crisis window convention (changed — read before comparing to earlier numbers)
 
@@ -147,8 +172,9 @@ analysis commands below reproduce their tables exactly, offline:
 ```bash
 python scripts/channel_correlations.py   # correlation matrix
 python scripts/causal_eval.py            # offline vs. causal |d|
-python scripts/null_model.py             # per-channel null floors
+python scripts/null_model.py             # per-channel null floors + control
 python scripts/multi_crisis_panel.py     # 15-crisis panel (the headline)
+python scripts/diagnostics.py            # positive controls + bug checks
 ```
 
 Why a snapshot rather than a pinned end date. `yfinance` returns
@@ -209,9 +235,12 @@ README's numbers are no longer the same computation.
   Table 5, and the word "walk-forward" is not used for this repo's protocol.
 - Absolute Cohen's d on synthetic data is not comparable to the paper's real-
   crisis numbers; it exists to prove the pipeline produces separable signal.
-- **No channel in this repo has been shown to detect above chance.** See the
-  multi-crisis panel. Effect sizes are reported throughout; none of them clears
-  its own noise floor after multiple-comparison correction.
+- **No channel in this repo has been shown to detect above chance — and the
+  tests used here do not have the resolution to show it either way.** The
+  positive control (20-day realized volatility) reaches only p = 0.039 on the
+  panel, below what BH correction over 14 tests requires. Effect sizes are
+  reported throughout; read them as un-cleared *and* as untested at any useful
+  power, not as evidence of absence.
 
 ## v3: SLD mixed-state QFI (novel channel)
 
@@ -489,15 +518,18 @@ cannot resolve lower."** So the shift null did not adjudicate `E0` in either
 direction, and **what prevents adjudication is our own conservatism, not the
 data.**
 
-> **Resolved by the panel — read this before quoting `E0` from this section.**
-> The verdict above rested on "a single window, no CI, and no replication
-> across crises," with the multi-crisis panel pre-registered as the test. That
-> test has now been run, and **`E0` did not replicate**: its 15-crisis median
-> |d| is 0.41 against a null median of 0.49 — *below* its own floor, at the
-> 31st percentile, q = 0.95. The 2022 hit is best read as the chance survivor
-> the count always suggested it was. This subsection is kept as the record of
-> what was claimed before the panel, and of the fact that it was framed as a
-> hypothesis rather than a finding.
+> **Correction — an earlier version of this box said the panel showed `E0` "did
+> not replicate." That claim is WITHDRAWN.** It rested on the panel *median*,
+> which the median's own positive control then invalidated (realized volatility
+> scores a median of 0.32 against a 0.45 floor, p = 0.93). A test that cannot
+> detect realized volatility delivers no verdict on any channel, so it delivered
+> none on `E0` — in **either** direction. The panel neither confirms nor
+> refutes the 2022 result. See "[H1 and H2 are VOID, not
+> failed](#h1-and-h2-are-void-not-failed)".
+>
+> What the panel *can* say, under the count statistic: `E0` clears its own floor
+> in exactly one crisis — **2022 Rate Hikes, the same window** — against 0.75
+> expected by chance. One hit is not evidence. It is also not a refutation.
 
 ### Primary family (COVID 2020 + Rate Hikes 2022), G.10 ±10 windows
 
@@ -524,8 +556,51 @@ complements, not the same number.
 
 **Note how wide those null 95% intervals are** — up to [0.03, 1.98]. That is
 the free lunch a single short window gets from an autocorrelated, fat-tailed
-series, and it is why a single-crisis test has almost no resolution. Narrowing
-it is the entire point of the panel below.
+series, and it is why a single-crisis test has almost no resolution.
+
+### Does the single-crisis test have a working instrument?
+
+The panel's median was invalidated by a positive control, so the same question
+must be asked here. Realized volatility, same downstream, reported outside the
+FDR family:
+
+| crisis | channel | \|d\| | (a) floor | (b) floor | p (a) | p (b) | tau | clears? |
+|---|---|---|---|---|---|---|---|---|
+| COVID | **realized vol (CONTROL)** | 1.99 | 0.44 | 0.45 | **0.027** | **0.034** | 186 | **YES** |
+| 2022 | **realized vol (CONTROL)** | 0.53 | 0.39 | 0.36 | 0.310 | 0.275 | 186 | no |
+| 2022 | ground energy E0 | 1.57 | 0.31 | 0.30 | 0.0002 | 0.020 | 108 | YES |
+
+**On COVID the control clears, so the single-crisis machinery works on at least
+one window.** That is a materially better position than the panel median, which
+cleared nothing.
+
+**On 2022 the control fails, and reading that correctly requires separating two
+cases with opposite consequences:**
+
+- **(a) the statistic is invalid** — what happened with the panel median. Then
+  the test is broken and `E0`'s 2022 result is uninterpretable.
+- **(b) the control is poorly suited to this window** — either realized vol's own
+  persistence gives it a structurally unreachable floor, or 2022 was a ten-month
+  grind rather than a vol spike, so vol genuinely should not separate. Then the
+  test is fine and `E0` stands.
+
+**The numbers favour (b), and rule out the persistence route within it.** On
+2022 realized vol's floor (0.39) sits *mid-pack* among the eight channels
+(range 0.23–0.55) and its tau (186) is likewise mid-pack (range 26–417) — so its
+failure is **not** explained by an unusually hard bar. What is small is its
+*signal*: |d| = 0.53, the 69th percentile, and six channels exceed it on that
+window. The window is demonstrably not inert — `E0` reaches the 100th percentile
+there against a reachable 0.31 floor.
+
+**The diagnosis is nonetheless not settled**, and is reported as ambiguous. What
+would distinguish the two remaining readings is a control that responds to a
+slow-grind crisis, and we do not have one; realized vol is by construction a
+control for *volatility* events. So:
+
+- `E0`'s 2022 result is **not withdrawn** — case (a) is not supported.
+- It is **not confirmed** either. It remains 1 survivor against 1.4 expected by
+  chance, now with the added caveat that no working control certifies that
+  particular window.
 
 ### The SLD channel, reported as pre-registered
 
@@ -579,15 +654,41 @@ panel sharpens it rather than overturning it: purity's 15-crisis median is the
 closest any channel comes to clearing (raw p ≈ 0.034–0.038, better than
 Hammond's 0.18 on the same question) and still fails FDR at q = 0.26.
 
-### The control fails too — and what that does and does not license
+### The HMM control fails too — but it has been demoted, and here is why
 
-The Gaussian HMM baseline also fails to clear its floor on COVID
-(|d| = 0.75, p ≈ 0.18) or on 2022 (|d| = 1.06, p ≈ 0.11), and its panel median
-(0.34) is the **lowest of all seven channels** and below its own null. This
-matters for interpretation: a well-understood classical detector, on crises it
-should find easiest, does not clear either. **So this is not geometric channels
-being uniquely weak — the whole panel is underpowered, or the metric is too
-blunt, or both.**
+The Gaussian HMM baseline fails to clear its floor on COVID (|d| = 0.75,
+p ≈ 0.18) or on 2022 (|d| = 1.06, p ≈ 0.11). The conclusion that used to be
+drawn from this — *not geometric channels being uniquely weak* — still holds,
+but **the HMM is no longer the primary control**, and the reason it was
+promoted to that role was never checked until now.
+
+Two findings from `scripts/diagnostics.py` disqualify it as a reference
+instrument:
+
+1. **Its convergence is not clean.** All 15 per-crisis fits report
+   `monitor_.converged == True`, so the long-standing "not converging" warning is
+   not a hard failure — but **12 of 15 report convergence on a *negative* final
+   log-likelihood delta.** EM is oscillating at the tolerance floor rather than
+   converging monotonically. (Corroborating detail: the warning text itself is
+   not bitwise reproducible across runs, differing at ~1e-13.)
+2. **Its posterior saturation swings with the fit window.** Because the causal
+   HMM is fit only on pre-cutoff returns, an early crisis calibrates it on a calm
+   world. The **2007 fit pins 94.6% of all days near zero** and scores |d| = 0.17
+   — on a window where realized volatility scores **2.20**. A control that is
+   blind where the unambiguous signal is loudest is not measuring what a control
+   should measure.
+
+**Realized volatility is now the primary control**: it fits nothing, so it
+isolates the evaluation from the embedding, and it has no EM to oscillate. The
+HMM remains in the tables as a classical *baseline* — a competitor detector,
+which is what Hammond uses it for — not as the instrument check.
+
+Caveat that must travel with realized vol: it is strongly autocorrelated
+(volatility clustering), so random null windows tend to land inside high-vol
+clumps and its floor is structurally high. Check its tau and floor against the
+other channels' before reading any failure of it as a broken test — see the
+2022 diagnosis above, where exactly that check ruled the persistence
+explanation out.
 
 Stated precisely, because these are different claims and only the weaker one
 is supported: **this analysis cannot distinguish "no signal" from "signal too
@@ -595,9 +696,9 @@ weak to detect with three crises."** Nothing here establishes that the
 geometric channels do not detect regimes. What it establishes is that
 **single-window Cohen's *d* on three crises cannot demonstrate that they do.**
 Every effect size in this repo should be read as un-cleared until a
-higher-powered protocol says otherwise. The panel below *is* that
-higher-powered protocol, and it does not rescue any channel — which narrows,
-but does not eliminate, the "too weak to detect" branch.
+higher-powered protocol says otherwise. The panel below was built to be that
+protocol; its own control shows it does not have the resolution to settle the
+question either.
 
 ### Methodology caveats
 
@@ -635,7 +736,22 @@ but does not eliminate, the "too weak to detect" branch.
   p ≈ 0.14–0.15).
 - **Multiple comparisons were pre-specified**, not chosen after seeing
   results: primary family = COVID + 2022 (28 tests), China held out, raw p and
-  BH q-values both reported.
+  BH q-values both reported. The realized-vol control is reported but **excluded
+  from the family** — it is the instrument check, not a hypothesis under test.
+- **Early crises may carry inflated z-scores from a short normalization
+  history.** `causal_zscore` normalizes against *all* prior smoothed values, so
+  the earliest crises are scored against a denominator estimated from a short and
+  calm history. Measured: the expanding SD at the 2007 crisis midpoint is
+  **0.0019 against ~0.009 for every later crisis — roughly 5×smaller**. The
+  symptom is visible in the control: realized volatility scores |d| = **2.20 on
+  the 2007 Quant Meltdown**, a stat-arb deleveraging event barely visible in
+  SPY/DIA, which is implausibly high on its face. Flagged, not corrected —
+  correcting it means choosing a minimum-history rule, which is a protocol change
+  with its own forking paths. Read 2007 numbers, including the control's, with
+  this in mind. (Tested separately for a general time trend and found none: the
+  strongest per-channel Spearman is reduced purity at ρ = −0.49, p = 0.066 over
+  15 points, and the expanding SD does not rise with date after 2008 — it drifts
+  slowly down. So this is a 2007-specific artifact, not systematic decay.)
 - **Data is pinned.** All figures come from the committed snapshot
   `data/spy_dia_close.csv` (SPY/DIA close, 2005-01-03 → 2026-06-30). See
   "Reproducibility" below — re-running these commands reproduces these numbers
@@ -646,189 +762,276 @@ constructions, yet their p-values agree to within ~0.02 on every channel
 (e.g. COVID purity 0.416 vs. 0.411). Two independent routes to the same floor
 is evidence the floor estimate is not an artifact of either one.
 
-## Multi-crisis panel (the headline result)
+## Multi-crisis panel
 
 ```bash
 python scripts/multi_crisis_panel.py
 ```
 
-Everything above this section is single-window work. The null-model tests found
-that essentially nothing clears its floor on one crisis — **including the HMM
-control** — which cannot distinguish "no signal" from "not enough power." A
-panel is the only lever that raises power, so this was flagged as the critical
-path, and this section is what came back.
+### Positive controls — read these first, they license everything below
 
-### Why the statistic is the MEDIAN across crises
+Every result in this repo is a non-detection. That pattern has two completely
+different explanations which, until controls existed, predicted **identical
+output**: either the channels carry no detectable signal, or the evaluation
+cannot detect anything at all. Two controls separate them
+(`python scripts/diagnostics.py`).
 
-The headline is each channel's **median |d| across the 15 crises**, not its
-per-crisis values. Three reasons, all fixed before the run:
+**Control 1 — realized volatility through the identical downstream.** SPY's
+20-day trailing realized vol, same causal z-score, same 15 masks, same Cohen's
+|d|, same two nulls, same correction. It fits nothing, so it isolates the
+*evaluation* from the *embedding*.
 
-1. **Power.** A single crisis's |d| sits inside an enormous floor — the null
-   95% intervals in the table above run to [0.03, 1.98], because an
-   autocorrelated, fat-tailed series lets *any* contiguous window separate by
-   luck. The median of *k* draws concentrates around the true median at rate
-   1/√k, so the null's spread shrinks while the real value does not move.
-   Measured: the null 95% interval narrows from ~1.2–2.0 wide per crisis to
-   **0.29–0.67 wide** on the panel median, a **~2.5–3× tightening**. Luck does
-   not repeat in the same direction eight times out of fifteen.
-2. **Multiple comparisons collapse.** Per-crisis testing would be
-   15 × 7 × 2 = **210 tests**, expecting ~10.5 chance survivors at α = 0.05 —
-   an uncountable result. Testing the median is 7 channels × 2 nulls =
-   **14 tests**, expecting **0.7**. A survivor becomes countable as evidence
-   instead of drowning in expected noise.
-3. **It matches Hammond.** His Table 3 is a 17-crisis median. Every comparison
-   this repo has made to his figures until now has been a point estimate
-   against a median — a type error the panel fixes.
+| statistic | realized vol | its own null | p |
+|---|---|---|---|
+| **median \|d\|** (old headline) | 0.32 | 0.45 | **0.93** |
+| **count** of crises clearing own 95th-pct floor | **3 / 15** | 0.75 expected | **0.039** |
 
-Median, not mean, because |d| has a heavy right tail: a mean would let one
-lucky crisis carry the panel, and would be dragged by the control-blind crises
-without the option of leaving them in.
+The median cannot see realized volatility. Per crisis it scores 3.05 (2008
+GFC), 2.20 (2007), 1.99 (COVID) — and 0.06–0.14 on nine others, because **most
+G.10 windows are not volatility events in SPY/DIA**. Not a window artifact:
+under bare G.10 without the ±10 extension the median is 0.33 with the same
+three crises above \|d\| = 1.
 
-### Result
+**Control 2 — end-to-end synthetic.** Synthetic returns on the *real* trading
+calendar with vol/correlation spikes injected on the *real* 15 windows, so
+every line of the panel runs unchanged and only the prices are manufactured.
+The machinery detects it: realized vol median 0.90 (q = 0.008), Gaussian HMM
+q = 0.0032 (clears both nulls), spectral entropy and reduced purity close behind
+(q = 0.058, 0.087). A single-crisis synthetic run scores every channel between
+0.89 and 4.71.
 
-15 crises (Hammond Table G.10 post-2005, ±10 trading days), causal past-fit
-preprocessing per crisis, all 7 channels. **No crises skipped** — the smallest
-pre-cutoff sample is 609 rows against a 200-row minimum.
+Supporting checks, all clean: masks align (2008 GFC and 2007 peak *exactly* at
+shift 0 under a ±60-day sweep); zero NaN days inside any crisis window across
+all channels; the vectorised z-score matches the production one to 7.6e-15;
+smoothing width `w = 20` is at or near optimal, so Algorithm 1's trailing mean
+is not diluting short windows.
 
-| channel | **median \|d\|** | null median | null 95% | pct | p (a) | p (b) | BH q | 95% CI |
-|---|---|---|---|---|---|---|---|---|
-| Reduced purity | **0.71** | 0.44 | [0.22, 0.74] | 96 | 0.038 | 0.034 | 0.26 | [0.47, 0.94] |
-| Berry phase rate | 0.51 | 0.55 | [0.27, 0.84] | 40 | 0.601 | 0.549 | 0.95 | [0.29, 0.73] |
-| SLD QFI (w=20) | 0.46 | 0.39 | [0.20, 0.62] | 70 | 0.299 | 0.278 | 0.95 | [0.26, 0.62] |
-| Ground energy E0 | 0.41 | 0.49 | [0.23, 0.81] | 31 | 0.692 | 0.674 | 0.95 | [0.29, 0.80] |
-| Spectral entropy | 0.40 | 0.57 | [0.27, 0.94] | 15 | 0.849 | 0.814 | 0.95 | [0.27, 0.73] |
-| QFI log-det | 0.36 | 0.59 | [0.30, 0.94] | 6 | 0.936 | 0.950 | 0.95 | [0.20, 0.56] |
-| Gaussian HMM | 0.34 | 0.40 | [0.27, 0.56] | 20 | 0.799 | 0.765 | 0.95 | [0.19, 0.71] |
+**Conclusion: the code is correct and the statistic was not.**
 
-**0 of 14 tests survive BH-FDR at q < 0.05**, against 0.7 expected by chance.
-Four of seven channels — including the HMM control — have a panel median
-**below their own null median**.
+### The harness is validated on volatility events only
 
-**The design worked; the result is negative.** The floor tightened by the
-predicted factor and in the predicted direction. Nothing cleared it. That is a
-substantially stronger negative than the single-crisis version, because the
-"underpowered" escape hatch is now much narrower — though not closed, and the
-framing discipline below still applies.
+Realized volatility is a **volatility** detector, so it can only ever validate
+the harness on volatility events. Its three panel hits (2007, 2008 GFC, COVID)
+are exactly the three vol spikes in the 15-crisis set. On the **other 12
+crises** — including 2022 Rate Hikes, a ten-month grind where realized vol
+*fails* (|d| = 0.53, p ≈ 0.31) but `E0` clears its floor — **there is no working
+positive control at all.**
 
-### Pre-registered hypotheses, reported as committed
+This is the concrete limitation of the current controls, and it cuts in a
+specific direction: the one window where a geometric channel clears and the vol
+control does not is precisely the window the vol control cannot speak to. So the
+harness is *known* to work where the signal is a vol spike, and *unvalidated*
+everywhere else.
 
-Both were recorded in `scripts/multi_crisis_panel.py`'s docstring before the
-panel was run. Both are **unfavorable**, and both are reported in the committed
-language.
+What would fix it is a **second control sensitive to slow-grind crises** — a
+trailing-drawdown measure, or a term-structure / vol-of-vol statistic — run
+through the identical downstream. If such a control cleared on 2022 and the
+other grind windows, the harness would be validated on the crisis types the
+geometric channels are most likely (by Task 1 orthogonality) to be responding
+to. This is on the roadmap and should precede any further reading of the
+per-channel results on non-vol crises.
 
-> **H1 — ground energy `E0` clears its null on the panel median. FAILED, and
-> decisively.** Prior: `E0` was the only single-crisis survivor (2022,
-> q = 0.006, at the 100th percentile of its own floor). On the panel its median
-> |d| is **0.41 against a null median of 0.49** — *below* its own floor, at the
-> 31st percentile, p ≈ 0.67–0.69, q = 0.95. **The 2022 result did not
-> replicate.** With one survivor observed against 1.4 expected by chance, the
-> honest reading was always that it might be a chance survivor; the panel is
-> the test that says so.
+### Why the statistic is the COUNT (and why the median was wrong)
 
-> **H2 — the SLD mixed-state QFI channel clears its null on the panel median.
-> FAILED.** Prior: it cleared nothing on single crises despite the easiest bar
-> (lowest floor) and the most power (least autocorrelated series). On the panel
-> its median |d| is 0.46 against a null median of 0.39 — above its floor but
-> only at the 70th percentile, p ≈ 0.28–0.30, q = 0.95. **Not demonstrated to
-> detect above chance**, on any window or on the panel.
+The headline is now the **count of crises in which a channel exceeds its own
+per-crisis 95th-percentile null**.
 
-### Per-crisis table — descriptive only
+The original argument for the median was that the median of *k* draws
+concentrates the **null** at rate 1/√k — true, and measured: the null 95%
+interval tightened ~2.5–3×. **The error was forgetting that the real statistic
+is also a median.** Both halves must be stated:
 
-`multi_crisis_panel.py` prints the full 15 × 7 grid. It is **not** mined for
-which channel wins which crisis type: Hammond tested for exactly that
-specialization and **found none (p = 0.31)**, so any such pattern across 15
-crises is almost certainly noise. Two things in it are worth stating because
-they are properties of the *panel*, not of any channel:
+- Against a **homogeneous** alternative (effect present in most crises), a
+  median is indeed far more powerful.
+- Against a **sparse** one (effect present in a minority), it is drastically
+  *less* powerful: the real median collapses into the noise faster than the null
+  tightens. It reads the 8th-ranked crisis, which sits in the blind majority.
 
-- **5 of 15 crises have a blind HMM control** (|d| < 0.2): 2007 Quant Meltdown
-  (0.17), 2015 China (0.09), 2018 Volmageddon (0.06), 2019 Repo Crisis (0.09),
-  2024 Carry Unwind (0.16). A third of Hammond's post-2005 window list is
-  effectively invisible in SPY/DIA — several of those events were not primarily
-  US large-cap equity events. **They are flagged and kept, not dropped.**
-  Dropping crises after seeing the control is a forking path; the median is
-  robust to a minority of bad crises by construction, which is part of why it
-  is the headline.
-- The per-crisis spread is enormous — the HMM control alone ranges from 2.84
-  (2008 GFC) to 0.06 (Volmageddon). This is the variance the median exists to
-  absorb, and it is why per-crisis numbers should not be quoted individually.
+The alternative here is sparse, and the control is what proved it.
+
+**Provenance, which is what makes the new statistic usable.** The count was
+selected **on the positive control alone, with the geometric channels
+untouched**: among {median, mean, max, count} only the count recovered realized
+vol (p = 0.039 vs 0.93 / 0.24 / 0.19). Choosing a statistic by which one
+flatters the channels under test would be a forking path; choosing it on a
+channel whose answer is known in advance is not.
+
+### The power ceiling
+
+The count is integer-coarse. Under binomial(15, 0.05) the attainable p-values
+are:
+
+| crises cleared | p | vs BH rank-1 at m = 14 (0.00357) |
+|---|---|---|
+| 2 | 0.171 | fail |
+| 3 | 0.036 | fail |
+| 4 | 0.0055 | fail |
+| 5 | 0.00065 | pass |
+
+There is nothing in between. **A channel needs 5 of 15 to survive correction**,
+against 0.75 expected by chance — that is the ceiling, and it stands on the
+arithmetic alone, independent of any detector. Consequently every count result
+below is **exploratory**, and **no raw p-value here may be read as if FDR
+correction were merely pending** — at this resolution correction is unreachable,
+not outstanding.
+
+Realized vol's 3 hits are a **reference point, not the cap.** It is a narrow
+detector (vol spikes only), and 3 is what it scores on a panel with 3 vol
+events — not a ceiling on what a broader detector could reach. A channel
+clearing those three plus two slow-grind crises would hit 5 and clear, which is
+the profile Task 1's orthogonality result (|ρ| < 0.13) predicts for a channel
+that is genuinely decorrelated from vol.
+
+### Result (exploratory)
+
+15 crises, causal past-fit preprocessing, none skipped (smallest pre-cutoff
+sample 609 rows against a 200 minimum).
+
+| channel | count (a) | p (a) | count (b) | p (b) | tau | median (superseded) |
+|---|---|---|---|---|---|---|
+| Berry phase rate | 1 | 0.54 | 1 | 0.55 | 371 | 0.51 (p = 0.60) |
+| Ground energy E0 | 1 | 0.54 | 1 | 0.57 | 136 | 0.41 (p = 0.69) |
+| Gaussian HMM | 1 | 0.54 | 1 | 0.57 | 190 | 0.34 (p = 0.80) |
+| Reduced purity | 0 | 1.00 | 0 | 1.00 | 111 | 0.71 (p = 0.038) |
+| SLD QFI (w=20) | 0 | 1.00 | 0 | 1.00 | 63 | 0.46 (p = 0.30) |
+| Spectral entropy | 0 | 1.00 | 0 | 1.00 | 483 | 0.40 (p = 0.85) |
+| QFI log-det | 0 | 1.00 | 0 | 1.00 | 442 | 0.36 (p = 0.94) |
+| **realized vol (CONTROL)** | **3** | **0.039** | **3** | **0.023** | 186 | 0.32 (p = 0.93) |
+
+**0 of 14 tests survive BH-FDR** — but per the ceiling, that outcome was
+guaranteed by the statistic's resolution and carries no information about the
+channels. The informative comparison is the raw count: **no geometric channel
+clears more than one crisis, against 0.75 expected by chance, while the control
+clears three.** Which crises: `E0` → 2022 Rate Hikes; Berry and the HMM → 2008
+GFC; control → 2007, 2008 GFC, COVID.
+
+Note that reduced purity has the **best median (0.71) and zero count hits**. The
+two statistics measure genuinely different things: purity sits moderately
+elevated across many crises without ever spiking past its own 95th percentile in
+any single one. Reported descriptively, not as a ranking.
+
+**Persistence asymmetry — how to read this table across rows.** Each channel's
+threshold is calibrated to its own null, and that null inherits the channel's own
+persistence, so a **highly autocorrelated channel faces a structurally harder
+bar**. This is correct behaviour for a per-channel null — it is what makes each
+p-value valid, and the reason Hammond's 0.53 is never imported — but it means
+"cleared / did not clear" is **not apples-to-apples across channels**, and the
+count inherits that asymmetry directly. The `tau` column is printed so the
+disparity is visible: spectral entropy and QFI log-det face tau ≈ 440–480, SLD
+only 63.
+
+This is the same mechanism already invoked *against* the SLD channel elsewhere
+in this README ("lowest floor, highest N_eff — the easiest bar, and it still
+showed nothing"). The corollary explains that passage rather than contradicting
+it: there the asymmetry runs in SLD's favour, which is why that negative stands.
+
+### H1 and H2 are VOID, not failed
+
+Both were pre-registered against the **panel median**:
+
+> H1: ground energy `E0` clears its null on the panel median.
+> H2: the SLD mixed-state QFI channel clears its null on the panel median.
+
+The median was then invalidated by its own control (0.32 against a 0.45 floor,
+p = 0.93). **A test that cannot detect realized volatility delivers no verdict on
+any channel.**
+
+**H1 is VOID. H2 is VOID.** Void, not *failed* — "failed" would mean tested and
+rejected; these were tested with a demonstrably invalid instrument, which yields
+no evidence in either direction. This is the same discipline as the `E0`
+shift-null correction elsewhere in this README, where a floored p-value was a
+**bound** rather than a rejection. In particular, **the earlier claim that `E0`
+"did not replicate" on the panel is withdrawn** — that was a median result.
+
+**No new hypotheses are pre-registered against the count.** The ceiling shows no
+confirmatory claim is reachable with it here. Pre-registering against a test
+proven unable to deliver a verdict is the *appearance* of discipline, not
+discipline. Pre-registration is deferred to the next protocol that might have
+power: multi-asset, or false-alarms-per-year.
+
+### The synthetic-panel finding — the most informative result about the extension this round
+
+This one does **not** depend on the median and is not void. On the synthetic
+panel the alternative is homogeneous by construction (a spike is injected into
+all 15 windows), so the median is a valid statistic *there* — and the harness
+demonstrably detects (realized vol 0.90, HMM q = 0.0032). Under those
+conditions:
+
+> **The SLD mixed-state QFI channel lands at 0.29, below its own null (p = 0.77).
+> QFI log-det lands at 0.33, likewise below its own null (p = 0.85).** Both fail
+> to respond to a crisis that spectral entropy (0.81), reduced purity (0.74),
+> Berry (0.66) and `E0` (0.65) all register.
+
+This is the most informative result about the extension this round, **with
+external validity limited by the synthetic construction**: `synthetic_prices()`
+injects a volatility/correlation spike, so what it establishes is that SLD does
+not respond to *that pattern*. How well an injected spike resembles real regime
+change is unestablished, and this is not a claim about real crises.
+
+### Per-crisis table — descriptive only, with a visibility column
+
+`multi_crisis_panel.py` prints the full grid. It is **not** mined for which
+channel wins which crisis type: Hammond tested for exactly that specialization
+and **found none (p = 0.31)**, so any such pattern across 15 crises is almost
+certainly noise.
+
+The realized-vol column is a **visibility reference**: it shows which crises
+exist at all in this instrument. **5 of 15 have a control |d| below 0.2** —
+2015 China (0.06), 2018 Q4 (0.06), 2019 Repo (0.06), 2018 Volmageddon (0.07),
+2023 SVB (0.09) — meaning a third of Hammond's post-2005 list is barely present
+in SPY/DIA. Where the control is ~0.1, no channel's number in that row should be
+read as a miss.
+
+**All 15 are kept, unfiltered.** The count statistic calibrates a floor *per
+crisis*, so an invisible crisis contributes null draws rather than false
+positives — sparsity is handled by construction. Filtering would double-solve it,
+and any filtering criterion is a forking path.
 
 ### Two nulls, and why they are not symmetric
 
-- **(a) Random matched-length windows**, drawn per crisis **independently**,
-  5000 panel draws. Independence across crises destroys the cross-crisis
-  dependence that the real 15 values have (they come from one market), which
-  makes this null median *tighter* than it should be — **an easier bar. Null
-  (a) is anti-conservative**, and is reported as such rather than quietly used.
-- **(b) Circular shift**, with **one common shift applied to all 15 series at
-  once** and every crisis mask held fixed. This preserves the cross-crisis
-  dependence exactly — it slides the whole world under a fixed crisis calendar
-  — so it is the **conservative** one. Its p is floored at 1/(N_eff+1) as
-  elsewhere, using the most autocorrelated of the 15 series.
+- **(a) Random matched-length windows**, drawn per crisis **independently**.
+  Independence destroys the cross-crisis dependence the real 15 values have
+  (they come from one market), making the null tighter than it should be — **an
+  easier bar. Anti-conservative**, for the count exactly as it was for the median.
+- **(b) One common circular shift** applied to all 15 series at once, masks
+  fixed. Preserves cross-crisis dependence exactly, so it is the **conservative**
+  one. Caveat specific to the count: because one shift moves all 15 crises
+  together, **the count's null under (b) is lumpy** — much higher variance than
+  under (a) — and against an already integer-coarse statistic that makes the (b)
+  p-values low-resolution. Read them as coarse, not precise.
 
-The two **bracket** the truth, and a channel clearing only (a) would be a
-weaker result than one clearing both. In the event, the two agree closely on
-every channel (largest gap 0.05) and nothing clears either.
+### Block-bootstrap CIs — scope
 
-### Block-bootstrap CIs — a different question from the null
+Computed on the **median only**, and retained as a precision statement about
+that now-superseded statistic (widths 0.36–0.52; Politis–White block lengths
+144–180). **No CI is computed on the count**: it is an integer over 0–15, so a
+percentile interval would be theatre rather than information.
 
-The null asks whether the median beats chance (**location**); the CI asks how
-precisely the median is measured (**width**). A channel can clear its null with
-a CI too wide to be useful, or have a tight CI around a median sitting squarely
-in noise. HANDOFF §8 item 1 specifies these, and the Task 2 write-up defers to
-them in several places ("no delta in this table is certified distinguishable
-from noise") — this pays that off.
-
-**Construction, and why it is not the obvious one.** One circular block
-resample of the **whole timeline** per replicate, with each crisis's labels
-riding along on the blocks; all 15 |d| are recomputed on that single resampled
-series and *then* the median is taken. The tempting alternative — resample each
-crisis independently and take the median — is **wrong here**, because the 15
-real |d| are not independent: each is scored against a "rest" group containing
-almost the entire series, including the other 14 crisis windows, so they share
-nearly all their data. Independent resampling would understate the variance of
-their median and produce a CI that is too narrow — the same failure mode as
-using an iid bootstrap on an autocorrelated series.
-
-Block length comes from the **Politis–White (2004) automatic rule**, not by
-hand: block length is the one free knob, and a knob tuned by eye on a reported
-statistic is exactly the fitting this repo avoids. It lands at 144–180 days per
-channel.
-
-Three caveats, all printed by the script:
-
-- **Conditional on this crisis set.** The CI propagates within-series sampling
-  error only. It does **not** propagate "which 15 crises" uncertainty — the set
-  is fixed by Table G.10.
-- **Politis–White saturates on every channel.** The autocorrelation never drops
-  below the rule's threshold inside the rule's own search range, so each block
-  length is a **lower bound** on that channel's persistence, and each CI is if
-  anything **too narrow**.
-- **Short crises are drawn all-or-nothing.** With blocks of ~150–180 days
-  against windows as short as 62, a crisis can miss a replicate entirely; it is
-  then dropped from that replicate's median. On average **11.5 of 15 crises**
-  contribute per replicate (5th percentile: 9). This widens the interval — the
-  safe direction — but the CI is a median over ~11–12 crises per replicate, not
-  always 15.
+Two caveats on the median CIs, both printed by the script: Politis–White's
+autocorrelation search **saturates on every channel**, so each block length is a
+lower bound on that channel's persistence and each interval is if anything too
+narrow; and with blocks of ~150–180 against windows as short as 62 days, a crisis
+can miss a replicate entirely, so on average **11.5 of 15 crises** contribute per
+replicate (5th percentile 9).
 
 ### What this does and does not license
 
-**It does not establish that the geometric channels fail to detect regimes.**
-The honesty architecture cuts both ways: the strong negative is as much an
-overclaim as the optimistic direction would be. What the panel establishes is
-narrower and firmer than the single-crisis version:
+**It does not establish that the geometric channels fail to detect regimes**, and
+it does not establish that they detect them. The honesty architecture cuts both
+ways. What the panel establishes is narrower and firmer:
 
-> At 15-crisis power, with causal past-fit preprocessing and a per-channel
-> noise floor, **no channel in this repo — geometric or classical — separates
-> crisis windows from arbitrary same-length windows by a margin distinguishable
-> from chance.**
+> At the resolution available here — 15 crises, a count statistic whose own
+> positive control reaches only p = 0.039 — **this repo cannot support a
+> confirmatory detection claim about any channel, geometric or classical.** What
+> it can say is that no geometric channel clears more than one crisis where
+> realized volatility clears three.
 
-The most likely explanations, none of which this analysis can adjudicate
-between, are that the effects are genuinely small; that Cohen's *d* against a
-rest group 26% composed of other crises is too blunt an instrument; that
-SPY/DIA is too narrow an instrument set (a third of the panel is invisible to
-the control); or that the event-study metric itself (Gap 2) is the wrong target
-and a deployment metric like false-alarms-per-year would behave differently.
-Those are the next tests, not conclusions.
+The remaining candidate explanations, none of which this analysis adjudicates
+between: the effects are genuinely small; Cohen's *d* against a rest group 26%
+composed of other crises is too blunt; SPY/DIA is too narrow an instrument set
+(a third of the panel is barely visible in it); or the event-study metric itself
+(Gap 2) is the wrong target and a deployment metric like false-alarms-per-year
+would behave differently. Those are the next tests, not conclusions.
 
 ## Roadmap
 
@@ -846,23 +1049,40 @@ Those are the next tests, not conclusions.
   matched-length windows and circular shift (see above). Result: 1 of 28
   primary tests survives FDR, against ~1.4 expected by chance. This
   reprioritizes everything below.
-- **v5 — multi-crisis panel — DONE, and negative.** 15 crises (Hammond Table
-  G.10 post-2005, ±10 trading days), causal past-fit preprocessing, median |d|
-  as the headline, both nulls run on the median, Politis–White block-bootstrap
-  CIs. Result: **0 of 14 tests survive FDR**; both pre-registered hypotheses
-  (E0, SLD) fail; the HMM control has the lowest panel median of all seven.
-  See "[Multi-crisis panel](#multi-crisis-panel-the-headline-result)". This
-  also closed the point-estimate-vs-median mismatch in every comparison to
-  Hammond's figures.
-- **v6 — what the panel makes next.** The panel removed power as the
-  explanation of last resort, so the remaining candidates are *what is being
-  measured* rather than *how much data*: (i) **Task 3.5**, the classical
-  Bures/MMD baseline, which is now the decisive test for whether the SLD
-  channel is more than a relabeled classical statistic; (ii) **Task 4**,
-  multi-asset — a third of the panel is invisible to the control in SPY/DIA
-  alone; (iii) **roadmap item 4/5**, false-alarms-per-year under an
-  expanding-window protocol, which closes Gap 2 and changes the metric rather
-  than the sample.
+- **v5 — multi-crisis panel — DONE; result is a POWER finding, not a channel
+  finding.** 15 crises (Hammond Table G.10 post-2005, ±10 trading days), causal
+  past-fit preprocessing, both nulls, Politis–White block-bootstrap CIs. The
+  panel shipped first with a **median** headline; its own positive control then
+  invalidated that statistic (realized vol median 0.32 vs a 0.45 floor,
+  p = 0.93), so the headline is now the **count** of crises clearing their own
+  per-crisis floor. What the panel established is that **the evaluation tops out
+  at p = 0.039 on a signal nobody disputes**, so no confirmatory claim about any
+  channel is reachable here. Pre-registered H1/H2 are **VOID, not failed**. See
+  "[Multi-crisis panel](#multi-crisis-panel)".
+- **v5.5 — harness diagnostics — DONE.** `scripts/diagnostics.py`: two positive
+  controls plus five bug checks (HMM convergence, mask alignment, smoothing
+  ablation, normalization drift, NaN audit). Established that the **code is
+  correct** — synthetic panel detects an injected crisis, masks peak exactly at
+  zero shift, no missing days — and that the **statistic was the problem**. Also
+  demoted the HMM from control to baseline and flagged the 2007 short-history
+  artifact.
+- **v6 — what comes next, now that power is the binding constraint.** More
+  crises will not help; the count already saturates its resolution at 15. The
+  live options change *what is measured*: (i) **a second positive control
+  sensitive to slow-grind crises** (trailing drawdown, or a term-structure /
+  vol-of-vol statistic) — realized vol validates the harness on vol events only,
+  so the other 12 crises, including the 2022 window where `E0` clears, are
+  currently unvalidated; this should come *first*, before further reading of
+  per-channel results on non-vol crises; (ii) **Task 4, multi-asset** — a third
+  of the panel is barely visible in SPY/DIA at all, so widening the instrument
+  set raises the number of crises that *exist* to be detected, which is the one
+  lever that moves the count's ceiling; (iii) **roadmap item 4/5**,
+  false-alarms-per-year under an expanding-window protocol, which closes Gap 2
+  and replaces the event-study metric entirely; (iv) **Task 3.5**, the classical
+  Bures/MMD baseline, still the decisive test for whether the SLD channel is more
+  than a relabeled classical statistic. **Pre-registration is deferred to
+  whichever of these is built** — see the panel section for why registering
+  hypotheses against the current statistic would be theatre.
 
 ## Layout
 
@@ -878,14 +1098,15 @@ qgmrd/
   features.py     returns / vol / momentum / cross-corr
   crises.py       THE crisis window registry (G.10 +/-10 trading days)
   pipeline.py     embed_series + Cohen's d
-  baseline.py     Gaussian HMM
+  baseline.py     Gaussian HMM (baseline) + realized_vol_series (CONTROL)
   data.py         synthetic generator + pinned snapshot loader
 scripts/
   run_demo.py             synthetic smoke run
   channel_correlations.py Task 1 — redundancy matrix
   causal_eval.py          Task 2 — offline vs. causal past-fit |d|
-  null_model.py           per-channel noise floors, single crises
-  multi_crisis_panel.py   15-crisis panel — the headline result
+  null_model.py           per-channel noise floors, single crises + control
+  multi_crisis_panel.py   15-crisis panel — count statistic, ceiling
+  diagnostics.py          positive controls + bug checks; statistic provenance
 tests/
   test_smoke.py  test_geometry.py  test_sld.py
 ```
