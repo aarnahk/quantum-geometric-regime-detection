@@ -1093,6 +1093,106 @@ composed of other crises is too blunt; SPY/DIA is too narrow an instrument set
 (Gap 2) is the wrong target and a deployment metric like false-alarms-per-year
 would behave differently. Those are the next tests, not conclusions.
 
+## Multi-asset panel (Task 3) — a null result, and the control it redirects to
+
+```bash
+python scripts/multiasset_panel.py
+```
+
+**What was built.** The SPY/DIA panel sees only equity-vol events — its
+realized-vol control clears 3 of 15 crises (2007, 2008 GFC, COVID), all US-equity
+vol spikes — because SPY and DIA are the same instrument (return corr > 0.9). This
+panel widens the instrument set to **SPY / TLT / UUP / GLD** (dropping DIA as
+redundant), chosen a priori by crisis-type coverage: TLT for rate/bond crises, UUP
+for dollar/funding, GLD for flight-to-safety. The single cross-asset feature is the
+**absorption ratio** (top-eigenvalue share of the rolling correlation matrix;
+sign-invariant), selected by a pre-registered degeneracy diagnostic on held-out
+calm data — the k=4 degeneracy concern was **tested and refuted** (AR/MC
+correlation ≈ 0.50, median AR 0.464, top-eigenvector SPY loading² 0.20). UUP's
+2007-02 inception truncates the panel to **14 crises** (2007 Quant Meltdown drops,
+pre-registered). Everything downstream — causal past-fit preprocessing, masks, both
+nulls, the per-crisis 95th-percentile count statistic — is the identical machinery
+the SPY/DIA panel uses.
+
+**Headline: on a like-for-like basis, widening the instrument set did not change
+visibility.** SPY's realized-vol control clears 3 of 15 on the SPY/DIA calendar
+(2007, 2008, COVID); the 2007 window drops here for lack of pre-cutoff history, so
+the like-for-like comparison is on the **shared 14 crises**, excluding 2007:
+
+| basis | crises visible |
+|---|---|
+| SPY alone, shared 14 | **2** (2008 GFC, COVID) |
+| Union SPY / TLT / UUP / GLD, 14 | **2** (2008 GFC, COVID) |
+| Added by TLT / UUP / GLD | **0** |
+
+The 3/15 → 2/14 change is entirely the dropped 2007 window, not a regression; on
+the shared 14 the two are **identical** — adding TLT/UUP/GLD cleared no crisis SPY
+did not already clear, and removed none either. Per-asset, TLT clears
+{2008, COVID}, UUP and GLD clear only {2008}. Both surviving crises are *global*
+vol spikes that SPY already caught, so the union adds nothing. Enrichment here is a
+**flat no-op on visibility**, not a gain and not a non-monotonic loss.
+
+**What the near-misses suggest, and what stays open.** The panel does not establish
+*why* visibility didn't rise, and the distinction is what the roadmap turns on.
+What is measured: several wider instruments post an elevated but sub-floor |d| on
+their a-priori crises. TLT's realized-vol |d| on its bond crises exceeds SPY's on
+the same windows and lands just under its own 95th-percentile floor:
+
+| crisis | TLT \|d\| / floor | SPY \|d\| (same window) |
+|---|---|---|
+| 2022 Rate Hikes | 1.03 / 1.09 | 0.83 |
+| 2011 Euro Crisis | 1.49 / 1.55 | 0.49 |
+| 2018 Q4 Selloff | 1.08 / 1.79 | 0.22 |
+
+These are **near-misses, not detections** (TLT 2022 misses its floor by 0.06).
+They are *suggestive* — consistent with, but not proof of, TLT carrying
+bond-specific signal — and no more. What the panel *does* establish is narrower:
+**the realized-vol control's persistent floor, not the asset set, is what caps
+visibility under this control.** Realized vol is highly persistent (volatility
+clustering), so each asset's floor is structurally high (~1.1–2.2), and a
+more-persistent asset (bonds) does not relieve a floor that is already too high.
+Whether the instrument set is *also* independently limiting — whether a
+better-matched control would actually clear those crises, or whether the signal
+simply is not there — is **untested**. The two candidate explanations
+(instrument-limited vs control-limited) predict the same output here and this panel
+does not separate them.
+
+This **refines, without resolving,** the SPY/DIA panel's null. That null was read
+as "the missing crises are not in the instrument." This panel shows that reading
+was premature: under a vol control, adding bonds/FX/gold changes nothing, but the
+near-misses leave open whether the slow-grind signal is absent or merely below this
+control's floor. Separating those is the job of a second, differently-floored
+control — not of more assets.
+
+**Geometric channels: 0 of 14 survive FDR, at chance level.** Under the count
+statistic (ceiling: 5 of 14 needed to survive BH correction; ~0.75 expected by
+chance), no geometric channel clears more than two crises and **0/14 tests
+survive**. Several channels clear exactly one crisis the realized-vol control does
+not — QFI log-det → 2019 Repo, spectral entropy → 2022 Rate Hikes, SLD → 2013 Taper
+Tantrum — but a single out-of-control clear **is** the ~0.75 chance rate, so it
+licenses no detection claim for any channel. This is descriptive only; per
+Hammond's finding of no crisis-type specialization (p = 0.31), it is not mined for
+which channel "owns" which crisis.
+
+The SLD mixed-state QFI channel, held to the same standard as everywhere else: it
+clears **one** crisis (2013 Taper Tantrum) at the chance rate, like every other
+channel, on a panel with **no demonstrated detection power**. This is an
+instrument-and-power-limited null — not "clears nothing" (it clears one), and not
+"failed where the harness works" (the harness showed no power here: visibility
+2/14, 0/14 FDR). The description is unchanged from the SPY/DIA panel — decorrelated,
+correct, novel, and not shown to detect above chance.
+
+**Roadmap consequence.** This elevates the **second positive control** (trailing
+drawdown / vol-of-vol, roadmap item 7) from queued to the critical next step — not
+because the control is proven to be the sole limit (it is not), but because it is
+the one instrument that can *separate* the two open explanations. Run per-asset
+through this same panel, a slow-grind control either clears the near-miss crises
+(control-limited: the signal was there under a floor the vol control couldn't beat)
+or does not (instrument-limited: the signal is not in these assets either). Either
+outcome resolves what this panel leaves open. The multi-asset panel remains in the
+repo as a **new panel beside the SPY/DIA one**, reported as a null result with this
+mechanism, not withdrawn.
+
 ## Roadmap
 
 - **v1-v3 — DONE.** Embedding, 7 channels, SLD mixed-state QFI, offline
