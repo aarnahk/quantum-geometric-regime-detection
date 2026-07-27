@@ -1,22 +1,8 @@
-"""Task 1: pairwise correlation matrix of all seven causal
-z-scored channels on real SPY/DIA data.
+"""Task 1: pairwise correlation of the seven causal z-scored detectors on SPY/DIA.
 
-Answers Open Question 1 (see README): is the SLD mixed-state QFI channel
-empirically redundant with the pure-state channels it generalizes, or does it
-carry decorrelated information? This is an offline-preprocessing run (same
-scaler/PCA-on-everything caveat as v0-v3); it is orthogonal to the causal-
-preprocessing question in Task 2 and answers only whether the channels agree
-with each other, not whether any one of them is causally clean.
-
-Correlation is computed over the full z-scored series (all trading days with
-sufficient history), not conditioned on the COVID window -- this tests
-day-to-day agreement between detectors, which is the relevant notion of
-redundancy, not just co-spiking during one crisis.
-
-Reports Pearson (headline, for direct comparability to Hammond's reported
-mean |rho| ~ 0.22 between geometric and classical families) and Spearman
-(robustness check against fat-tailed extreme days) side by side, flagging
-any pair where they diverge meaningfully.
+Answers Open Question 1 -- is the SLD mixed-state QFI channel redundant with the
+pure-state channels, or genuinely decorrelated? Reports the SLD row explicitly.
+Result and full matrix: see README.
 
     python scripts/channel_correlations.py
 """

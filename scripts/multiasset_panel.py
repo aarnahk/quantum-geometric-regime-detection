@@ -1,38 +1,11 @@
-"""Multi-asset panel (Task 3) -- the pre-registered VISIBILITY headline.
+"""Multi-asset panel (Task 3): does widening the instrument set make more crises
+visible? SPY/TLT/UUP/GLD, absorption-ratio aggregate, 14 crises (UUP's 2007-02
+inception drops the 2007 window).
 
-WHY. The SPY/DIA panel sees only equity-vol events: its realized-vol control
-clears just 3 of 15 crises (2007, 2008, COVID), all US-equity vol spikes. The
-other 12 are rate/FX/credit events that barely touch equities, so they are not
-in the instrument -- no channel or feature work can recover them. This panel
-widens the instrument to SPY/TLT/UUP/GLD (drop DIA, redundant with SPY) so those
-crisis types EXIST to be detected.
-
-PANEL SIZE: 14, not 15. UUP inception is 2007-02, so the frame starts ~2007 and
-the 2007 Quant Meltdown drops (< 200 pre-cutoff rows). Pre-registered. NOT
-count-comparable to the 15-crisis SPY/DIA panel; all cross-panel comparison is on
-the shared 14, where the SPY/DIA control makes 2 crises visible (2008, COVID).
-
-CROSS-ASSET AGGREGATE = ABSORPTION RATIO (sign-INVARIANT; the sign map governs
-only the MC alternative). Chosen by the pre-registered degeneracy diagnostic
-(scripts/multiasset_aggregate_diagnostic.py): the k=4 degeneracy concern was
-tested on held-out calm data and REFUTED (AR/MC corr ~0.50, median AR 0.464, SPY
-loading^2 0.20), so AR was retained as a distinct, information-bearing aggregate.
-
-THE HEADLINE = VISIBILITY. Per-asset 20-day realized vol, each through the
-IDENTICAL downstream (causal z-score, masks, |d|, both nulls, the count
-statistic), counting a crisis VISIBLE if ANY instrument clears its own per-crisis
-95th-pct floor. Pre-registered H(multi-asset): the visible count rises materially
-above the SPY-alone baseline of 2 on the shared 14. Reported regardless.
-
-Bookkeeping (pre-registered): a union over k per-asset controls is k simultaneous
-comparisons, so it inflates the count vs a single control. Both are reported --
-the per-asset breakdown AND the union -- and the union is read as an upper
-envelope, not a single-instrument p-value. Per Task 3, a control clearing
-on a newly-visible crisis licenses INTERPRETATION of that window, never a
-detection claim about a geometric channel.
-
-Geometric-channel counts follow as EXPLORATORY, under the same ceiling as the
-SPY/DIA panel (5 of 14 needed to survive FDR; see scripts/multi_crisis_panel.py).
+Same causal past-fit machinery, masks, nulls, and count statistic as the SPY/DIA
+panel; a per-asset realized-vol control counts a crisis visible if any asset
+clears its own floor. Result (a flat no-op on visibility; the TLT near-misses and
+the open control- vs. instrument-limited question): see README.
 
     python scripts/multiasset_panel.py
 """

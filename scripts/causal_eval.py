@@ -1,37 +1,11 @@
-"""Task 2: causal (past-fit) preprocessing evaluation.
+"""Task 2: causal (past-fit) preprocessing evaluation (offline vs. causal |d|).
 
-Every prior number in this repo fits the StandardScaler and PCA on the *whole*
-price history -- including the crisis being detected. That is an offline event
-study, not causal detection: the preprocessing already "knows" where the crisis
-is. This script removes exactly that look-ahead and measures how much signal
-survives.
-
-Crisis windows come from the shared registry in ``qgmrd/crises.py``: Hammond's
-Table G.10 windows extended by +/-10 trading days (his Sec. 4.1 convention),
-applied uniformly across this repo. An earlier ad-hoc COVID window was replaced
-by that convention; every number this script prints is under the new one.
-
-Protocol, per crisis:
-  1. cutoff = extended_window_start - 10 business days.
-  2. Fit StandardScaler + PCA on rows with index < cutoff ONLY. The 10-day
-     buffer exists because features include 20-day rolling volatility; a strict
-     same-day cutoff would let crisis vol leak backward through the rolling
-     window. Ten business days exceeds the longest rolling window in play.
-  3. .transform() the FULL timeline with those past-fit objects, so crisis days
-     are projected into a frame defined entirely by pre-crisis normalcy.
-  4. Recompute all seven channels + causal z-scores on that embedding.
-  5. Score Cohen's |d|, crisis window vs. rest, and print offline vs. causal
-     side by side. The GAP between the two columns is the result.
-
-Operators are data-independent (seeded), so they need no causal handling -- the
-same operators are used both ways (see README). The HMM baseline IS refit
-causally here (on pre-cutoff returns only), so the baseline column is honest
-end-to-end rather than secretly still global.
-
-Scope note -- this closes Gap 1 (leaky preprocessing) only. Gap 2 remains open:
-Cohen's d still compares the crisis window against ALL other days, including
-future ones, so even the causal column is offline separability, not real-time
-detection (see README). Do not read the causal |d| as a deployment number.
+Fits scaler/PCA/HMM only on rows before each crisis (past-only), transforms the
+full timeline through them, and re-scores Cohen's |d| so the preprocessing no
+longer "knows" where the crisis is. Closes Gap 1 (leaky preprocessing); Gap 2
+(scoring against future days) remains, so the causal column is still an offline
+event study, not real-time detection. Windows: qgmrd/crises.py (Table G.10 +/-10).
+Full writeup, caveats, and the offline->causal tables: see README.
 
     python scripts/causal_eval.py
 """

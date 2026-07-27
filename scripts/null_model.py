@@ -1,75 +1,11 @@
-"""Null-model tests: does each channel clear its own
-noise floor?
+"""Null-model tests: does each channel clear its own noise floor?
 
-Every Cohen's |d| in this repo has so far been reported against a *missing*
-floor. In an autocorrelated, heavy-tailed score series, any contiguous window
-separates from the rest by some amount for free -- persistence and fat tails
-cluster extreme values, so a window "this long looks this separated" by chance
-alone. The null distribution IS that free-lunch floor. A channel's real |d|
-counts as signal only if it sits in the far right tail of ITS OWN floor.
-
-Two nulls (Hammond Sec. 5.1), attacking the same question from opposite sides:
-
-  (a) Random matched-length windows. Keep the SERIES fixed, move the WINDOW:
-      draw a window of the same (non-NaN) length as the real crisis, placed
-      elsewhere and non-overlapping the true crisis, |d| of window vs. rest.
-      Tests whether the actual crisis DATES are special, or whether an
-      arbitrary same-length window separates just as well. Preserves the
-      series' real autocorrelation and marginals (genuine contiguous chunks).
-
-  (b) Circular shift. Keep the WINDOW fixed, slide the SERIES underneath it by
-      a random offset (wrap-around), |d| of the fixed crisis mask vs. rest.
-      Tests whether the score's ALIGNMENT to the crisis is real or accidental.
-      A circular shift is a bijection -- every value kept, only the phase
-      changes -- so it preserves the autocorrelation exactly (up to one seam)
-      while destroying correspondence to the crisis dates.
-
-The floor is computed PER CHANNEL from that channel's own series: Hammond's
-~0.53 came from his pipeline, and a floor depends on each channel's own
-distributional shape (heavy-tailed series inflate it). We never import 0.53.
-
-Reporting is pre-registered before any result exists: all
-seven channels are reported on every window regardless of outcome, INCLUDING
-the flagship SLD channel. A channel failing to clear its null -- "mathematically
-correct, novel, decorrelated, and not demonstrated to detect above chance" --
-is a legitimate finding and is written up as such, not softened or buried.
-
-Four decisions fixed up front (see also the caveats printed by main()):
-
-  1. MULTIPLE COMPARISONS. 7 channels x 3 crises x 2 nulls = 42 tests; ~2 clear
-     at alpha=0.05 by chance. Primary family = COVID + 2022 (28 tests); China
-     already carries an uninterpretability caveat (blind HMM control) and is
-     reported SEPARATELY as exploratory, excluded from the FDR correction.
-     Across the primary family we report raw p AND Benjamini-Hochberg q-values,
-     and state the expected false-positive count (28 * 0.05 ~ 1.4).
-
-  2. CONSERVATIVE (NOT CLEAN) FLOOR. Random null windows sometimes land on other
-     genuine crises (2008, 2011, 2018). Those are not null periods, so the floor
-     is inflated -- but that is the SAFE direction (harder to clear). We keep
-     those periods in; the floor is "harder to clear than a true null," not a
-     clean null. Stated, not corrected.
-
-  3. SHIFT-P RESOLUTION IS ILLUSORY. Adjacent offsets on an autocorrelated
-     series are near-duplicate draws, so M shifts is far fewer than M
-     independent samples. We estimate N_eff = M / tau_int (integrated
-     autocorrelation time, Geyer initial-positive-sequence) and FLOOR the shift
-     p-value at 1/(N_eff+1) rather than 1/(N_draws+1).
-
-  4. FOLDING CAVEAT. |d| discards direction, so a channel moving the WRONG way
-     in a crisis still registers as detecting. We keep |d| for consistency with
-     the rest of the repo, print the real effect's SIGN ('dir') for
-     transparency, and flag it. The null test itself is on |d| vs. |d|.
-
-Runs on the CAUSAL (past-fit) z-scored series -- the same per-crisis
-preprocessing as scripts/causal_eval.py. The nulls are pure
-score-series transforms: no re-embedding, no re-fitting of the pipeline.
-
-Crisis windows come from the shared registry (``qgmrd/crises.py``): Hammond
-Table G.10 extended by +/-10 trading days, applied uniformly repo-wide. Numbers
-here are under that convention, not the earlier ad-hoc COVID window.
-
-The 15-crisis panel version of this test -- nulling the MEDIAN |d| across
-crises, which is far better powered -- is scripts/multi_crisis_panel.py.
+In an autocorrelated, heavy-tailed series any contiguous window separates from
+the rest by some amount for free; these two nulls measure that free lunch per
+channel. (a) random matched-length windows -- are the crisis DATES special?
+(b) circular shift -- is the ALIGNMENT to the crisis real? Runs on the causal
+z-scored series, per-channel floors never imported, BH-FDR over a pre-specified
+family, shift p-values floored at 1/(N_eff+1). Full results and caveats: README.
 
     python scripts/null_model.py
 """

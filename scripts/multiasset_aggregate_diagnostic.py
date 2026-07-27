@@ -1,23 +1,11 @@
 """Pre-registered AR-vs-MC degeneracy diagnostic (Task 3).
 
-Decides the single cross-asset aggregate for the multi-asset panel BEFORE the
-panel is run, on a HELD-OUT, genuinely-calm reference -- never on the 14
-evaluation crises (choosing a method by its test-set behavior is the optimism
-bias avoided everywhere else).
+Decides the single cross-asset aggregate for the multi-asset panel on HELD-OUT
+calm data (2014), never on the evaluation crises: absorption ratio (AR) vs.
+sign-aligned mean pairwise correlation (MC), by a numeric rule fixed a priori.
+Result (AR selected; the k=4 degeneracy fear refuted): see README.
 
-Calm reference = 2014 alone (k=4, all assets live; 2013-taper tail clears ~60
-trading days before 2014, so lookbacks are crisis-free). 2004-2006 was preferred
-on calmness but declined: UUP is absent pre-2007, making it a k=3 subsystem whose
-AR floor (1/3) is not comparable to the k=4 panel's (1/4). 2012/2017 dropped:
-mid-2012 Euro haven flows and 2013 taper stress contaminate TLT.
-
-Numerical rule + tie-breaker, committed before running:
-  D1 dynamic range : median(AR)          AR-safe <0.80 | ambiguous [0.80,0.85) | degenerate >=0.85
-  D2 redundancy    : |corr(AR, MC)|       AR-safe <0.90 | ambiguous [0.90,0.95) | redundant  >=0.95
-  -> use AR ONLY if BOTH are AR-safe; any other outcome (degenerate, redundant,
-     or ambiguous on either axis) selects MC. Ties break toward MC, the more
-     interpretable and less degeneracy-prone object at k=4.
-  corroborating (non-decisive) : median SPY top-eigenvector loading^2.
+    python scripts/multiasset_aggregate_diagnostic.py
 """
 
 from __future__ import annotations

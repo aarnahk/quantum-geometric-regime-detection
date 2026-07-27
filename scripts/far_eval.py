@@ -1,58 +1,15 @@
 """Causal false-alarm-rate (FAR) evaluation -- roadmap item 4.
 
-PRE-REGISTERED in FAR_PREREGISTRATION.md. This script implements that document
-and nothing beyond it; every knob (calibration block, target rate, alarm
-definition, era bins, FDR family) was fixed there BEFORE this code ran. If a
-knob must change, that is a new pre-registration, not an edit here.
+Deploy-once: fit scaler/PCA/HMM and a per-channel threshold ONCE on the calm
+2005-02..2007-07 calibration block (zero crisis days), freeze, and run forward --
+false alarms/yr on calm days, detection + delay on the 15 crises. The alarm
+decision at day t uses only data <= t, so this is the repo's first real-time
+metric (it is NOT walk-forward -- there are no monthly refits).
 
-WHAT THIS ASKS, IN ONE LINE. Cohen's |d| and the panel count ask an offline
-"is the crisis distribution different from the rest (including the future)."
-FAR asks a deployed operator's question: fix one threshold on PAST CALM DATA,
-freeze it, run forward -- how often does each channel cry wolf on calm days
-(false alarms/yr), and does it fire during real crises (detection + delay)?
-The decision at day t uses only data <= t, so FAR is the first genuinely
-real-time metric in this repo (it substantially addresses Gap 2's core defect,
-though it is NOT walk-forward -- there are no monthly refits; see Sec. 2b).
-
-THE ARCHITECTURE IS DEPLOY-ONCE (FAR_PREREGISTRATION Sec. 3). One detector per
-channel: scaler/PCA fit ONCE on the calm calibration block, frozen, and the full
-timeline transformed through them; one causal z-scored series per channel; one
-threshold tau per channel, calibrated on the block and frozen. Not the panel's
-per-crisis refit -- 15 thresholds would be 15 detectors, and "false alarms/yr of
-WHICH detector" is then incoherent. One frozen detector is what "deploy" means
-and what makes the number comparable to Hammond's ~1 alarm/yr.
-
-THE CALIBRATION BLOCK (FAR_PREREGISTRATION Sec. 3.1). Rows strictly before the
-2007 Quant Meltdown's causal cutoff, i.e. index < 2007-07-04:
-    2005-02-01 -> 2007-07-03, 609 rows (~2.42 yr), ZERO crisis days.
-The block ends before the first extended crisis window with the standard 10-BDay
-buffer, so 20-day rolling features cannot leak the 2007 event backward.
-
-TAU CALIBRATION IS THE WHOLE GAME (FAR_PREREGISTRATION Sec. 4). Per channel, tau
-is set so the alarm-EVENT rate on the block's calm days equals the target
-(1/yr). An alarm is an UPCROSSING (below->above); a detector sitting above tau is
-one alarm until it drops back below. COARSENESS, pre-registered: ~2.2 usable
-years and ~2 expected events make tau coarsely determined (~0.4/yr granularity).
-That is inherent to a zero-crisis pre-everything block, not a bug; the achieved
-in-sample rate is reported up to that granularity, the sweep brackets it, and the
-by-era forward FAR shows how it landed.
-
-FAR DOES NOT ESCAPE THE POWER PROBLEM (FAR_PREREGISTRATION Sec. 6). At 1/yr a
-window of L trading days is detected by a PURE-NOISE detector with prob
-~1-exp(-L/252); summed over the 15 real windows that is ~3-4 free detections.
-So detection count is judged against a per-channel CHANCE FLOOR from that
-channel's own circular-shift null (masks fixed), which inherits its persistence
--- a persistent channel faces a HIGHER floor, so "cleared/didn't" is NOT
-apples-to-apples across channels (tau_autocorr printed beside each count). BH-FDR
-over the 7-detector family (6 geometric + HMM; control excluded) is applied
-UNCONDITIONALLY, fixed before the numbers were seen.
-
-PRE-REGISTERED EXPECTATION (FAR_PREREGISTRATION Sec. 2). Everything was at chance
-under Cohen's d and the count, so the base rate is that FAR shows little
-detection too. Run because it asks a sharper question, NOT because a positive is
-expected; a good FAR profile where d was unremarkable is a genuine finding, and
-nothing improving is a stronger negative (two rulers agree). Tau is never tuned
-toward the positive.
+Every knob was pre-registered in FAR_PREREGISTRATION.md BEFORE this ran; the
+realized outcome (deploy-once is infeasible/inconclusive on detection, with a
+fixed-line separation residue) is that file's Sec. 10, and the reader-facing
+writeup is in the README.
 
     python scripts/far_eval.py
 """

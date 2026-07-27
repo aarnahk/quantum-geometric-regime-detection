@@ -1,90 +1,10 @@
-"""Harness diagnostics: POSITIVE CONTROLS + specific bug checks.
+"""Harness diagnostics: two positive controls + five bug checks.
 
-WHY THIS EXISTS. Every result in this repo is a non-detection. The panel says
-no channel clears its noise floor; the null models said the same on single
-crises; even the Gaussian HMM control fails. That pattern has two completely
-different explanations which, so far, predict IDENTICAL output:
-
-    (i)  the channels genuinely carry no detectable signal at this power, or
-    (ii) the evaluation harness cannot detect anything at all.
-
-Nothing built so far distinguishes them, because nothing built so far has
-asked the harness to find something that is unambiguously present. Until a
-positive control exists, "nothing cleared" is not a finding -- it is an
-uninterpretable measurement, and the write-up cannot lean on it.
-
-This script is DIAGNOSTIC ONLY. It recomputes nothing that the README reports
-and changes no existing result. It answers: does the harness work?
-
-------------------------------------------------------------------------------
-POSITIVE CONTROLS (the important part)
-
-  1. REALIZED VOLATILITY AS A CHANNEL. SPY's 20-day trailing realized vol,
-     pushed through the IDENTICAL downstream -- same causal z-score (w=20,
-     m=60), same 15 crisis masks, same Cohen's |d|, same two nulls, same panel
-     median, same BH-FDR. Realized vol is definitionally elevated in a
-     volatility crisis; it needs no preprocessing, so it also isolates the
-     EVALUATION from the EMBEDDING.
-       clears  -> the harness works, and the geometric negative gets STRONGER
-                  (a channel that must separate does; the others do not).
-       fails   -> every negative in this repo is uninterpretable. Not "the
-                  channels have nothing" but "we cannot measure whether
-                  anything has anything."
-     This test can only validate the HARNESS. It can never validate a channel.
-
-  2. END-TO-END SYNTHETIC. A different failure mode from (1): test 1 checks the
-     METRIC with a trusted channel on real data; test 2 checks the CODE --
-     masking, indexing, null construction, FDR -- against data whose ground
-     truth we manufactured. Synthetic returns are generated ON THE REAL TRADING
-     CALENDAR with vol/corr spikes injected EXACTLY on the 15 real crisis
-     windows, so every line of the panel runs unchanged and only the prices are
-     fake. A failure is then attributable to code, not to window definitions or
-     calendar handling.
-
-BUG CANDIDATES
-
-  3. HMM CONVERGENCE. Dismissed as "known harmless" since the start, and the
-     HMM now has the LOWEST panel median of all seven -- which is what a broken
-     control looks like. Reports monitor_.converged_, iterations and final
-     log-likelihood delta for every per-crisis fit. Also reports POSTERIOR
-     SATURATION, a second failure convergence alone cannot reveal: the causal
-     HMM is fit only on pre-cutoff returns, so an early crisis calibrates it on
-     a calm world and its high-variance posterior can pin at 1.0 across every
-     later crisis. A near-binary posterior, causally z-scored, would produce
-     exactly the tiny |d| seen on 2007 (0.17) and Volmageddon (0.06).
-
-  4. MASK ALIGNMENT. Shift every crisis mask by +/-60 trading days and recompute
-     the panel median. Flat under a +/-30 shift => either the masks are not where
-     we think they are, or the signal is not localized to the crisis. Peaked at
-     zero => alignment confirmed. Realized vol supplies the reference curve, so
-     we can compare SHAPES rather than guess what "localized" looks like.
-
-  5. SMOOTHING vs SHORT WINDOWS. Algorithm 1 takes a 20-day trailing mean before
-     z-scoring; a trailing mean spreads a step into a ramp and drags pre-crisis
-     days upward. Ablate w in {1, 5, 10, 20} on the panel median.
-
-  6. EXPANDING-NORMALIZATION DRIFT. causal_zscore normalizes against the mean
-     and std of ALL prior smoothed values, so by 2020 the denominator includes
-     2008. Cohen's |d| compares a window to the rest of the SAME series, so a
-     later crisis divided by a bigger denominator scores lower -- the market did
-     not move less, the yardstick grew. Regress per-crisis |d| on crisis date.
-
-  7. NaN / WARM-UP AUDIT. Per crisis and channel, how many days inside the
-     window have finite z-scores. A partly-NaN window silently shrinks its own
-     sample and inflates the variance of its |d|.
-
-OUTCOME. Test 1 showed the panel MEDIAN cannot detect realized volatility, and
-test 1b showed the COUNT can (p = 0.039 vs 0.93). The count was adopted as the
-panel's headline statistic on that basis -- selected on the control alone, with
-the geometric channels untouched. THIS FILE IS THE PROVENANCE RECORD for that
-choice; see scripts/multi_crisis_panel.py for the statistic itself and for why
-its integer-coarse resolution means no confirmatory claim is reachable there.
-
-FORKING-PATH DISCIPLINE. Tests 4, 5 and 6 sweep a parameter. Every value is
-reported; none is adopted. Moving the windows to wherever |d| peaks, or picking
-the smoothing width that maximises the panel median, is precisely the tuning
-the honesty architecture forbids (see README). These sweeps diagnose the
-harness; they do not choose a protocol.
+Runs realized volatility and an end-to-end synthetic crisis through the real
+pipeline (does the harness detect anything at all?), plus checks for HMM
+convergence, mask alignment, smoothing width, normalization drift, and NaNs. Also
+the provenance record for how the panel's count statistic was selected -- on the
+control alone, with the geometric channels untouched. Full writeup: see README.
 
     python scripts/diagnostics.py
 """
