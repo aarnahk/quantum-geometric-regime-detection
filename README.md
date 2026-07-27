@@ -1193,6 +1193,104 @@ outcome resolves what this panel leaves open. The multi-asset panel remains in t
 repo as a **new panel beside the SPY/DIA one**, reported as a null result with this
 mechanism, not withdrawn.
 
+## False-alarm-rate evaluation (roadmap item 4) — inconclusive by infeasibility
+
+```bash
+python scripts/far_eval.py
+```
+
+Cohen's *d* and the panel count are offline: they score the crisis window against
+every other day, including future ones. A false-alarm-rate (FAR) test asks the
+deployed operator's question instead — fix one threshold on **past calm data**,
+freeze it, run forward, and count how often each channel fires on calm days
+(false alarms/yr) versus during real crises (detection + delay). The decision at
+day *t* uses only data ≤ *t*, so this is the first genuinely real-time metric in
+the repo. Every knob was fixed in `FAR_PREREGISTRATION.md` **before** the run:
+one **deploy-once** detector per channel (scaler/PCA/HMM and the threshold all
+frozen on the calm 2005-02-01 → 2007-07-03 block, zero crisis days), per-channel
+τ calibrated to **1 alarm/yr**, alarms as upcrossings, chance floor from each
+channel's own circular-shift null, BH-FDR over the 7-detector family applied
+unconditionally.
+
+**Headline: the test could not be run at a valid operating point, so it is
+inconclusive on detection — not a null.** This is the same discipline as the void
+H1/H2 and the floored `E0` shift-p elsewhere in this repo: an instrument that was
+never validly calibrated delivers no detection verdict in either direction.
+
+Stated exactly, because the difference matters: **two of this repo's metrics
+returned verdicts and both were null** — offline Cohen's *d* and the panel
+count-nulls. **The third, FAR, could not be evaluated at all**, because no frozen
+threshold hitting the target rate transfers to the deployed period (below). That
+is not a third null verdict, and this section makes **no detection count claim**
+from the FAR run — a count from a detector firing several to many times a year on
+calm days carries no detection meaning. **The infeasibility is itself the
+evidence**: that the crisis/calm separation is too weak to place a working
+threshold on is a finding in its own right, and it points the same way as the two
+null verdicts without pretending to be a third one.
+
+**Why deploy-once is infeasible here, precisely.** τ calibrates correctly
+in-sample (all channels hit 0.92/yr on the block — 2 events over 2.18 years, the
+pre-registered granularity). But the block's causal-z **dynamic range is
+compressed** relative to the deployed period, so a block-set threshold sits at the
+bottom of the forward distribution and does not transfer:
+
+| channel | block z-max (2.4 calm yr) | forward z-max | forward FAR @ block-τ (target 1.0) |
+|---|---|---|---|
+| qfi_logdet | 1.13 | 4.96 | **3.37** |
+| berry_phase_rate | 1.41 | 8.84 | **2.25** |
+| reduced_purity | 1.93 | 2.27 | 0.52 |
+| ground_energy E0 | 1.56 | 1.64 | 0.45 |
+| sld_qfi_w20 | 8.86 | 4.93 | 0.22 |
+| Gaussian HMM | 320.8 | 10.88 | 0.22 |
+| **realized vol (CONTROL)** | 3.44 | 7.71 | 0.15 |
+| spectral_entropy | 2.95 | 2.89 | 0.07 |
+
+Realized forward FAR spans **0.07–3.37/yr against the 1.0/yr target — off in both
+directions and uncontrolled.** A 1/yr threshold *does* exist for each channel, but
+only by reference to the forward distribution, which deploy-once cannot see, so it
+is not findable. The pre-registered **drift** caveat was the dominant effect and
+is vindicated as a primary caveat: qfi's calm FAR sits at 2.5–3.8/yr across the
+2005–2019 eras and peaks at **5.26/yr in 2020–2024** (the by-era table the script
+prints), so **raw forward FAR measures regime drift and range-mismatch, not
+detection**, and is labelled that way. No detection
+count is read off this run: at an ill-set operating point an in-window "hit" just
+means the detector happened to be firing, and the chatty channels fire ~20% of
+*all* days regardless of crisis (qfi 22.0% of crisis days vs 23.9% of calm), so a
+raw count reflects firing rate, not alignment to crises.
+
+**The informative residue — fixed-line separation.** What survives cleanly is
+whether a channel crosses its threshold *preferentially* during crises. In-crisis
+vs calm exceedance ratio at the deploy-once operating points:
+
+| channel | crisis exc. | calm exc. | ratio |
+|---|---|---|---|
+| **realized vol (CONTROL)** | 7.9% | 0.4% | **17.8×** |
+| Gaussian HMM | 6.3% | 0.8% | **8.2×** |
+| sld_qfi_w20 | 2.3% | 0.8% | 2.9× (few events) |
+| qfi_logdet | 22.0% | 23.9% | **0.92×** |
+| berry_phase_rate | 8.9% | 12.9% | **0.69×** |
+| E0 / spectral / purity | ≤ 0.4% | ≤ 2.7% | too few forward exceedances to test |
+
+The two geometric channels that fire often enough to test (qfi, berry) fire **no
+more — berry *less* — during crises than during calm**, while the control fires
+18× more and the HMM 8× more. So no geometric channel crosses a fixed line
+preferentially in a crisis. This **corroborates the offline weak-separation
+picture through a different lens** — it is not an independent clean verdict, since
+the operating points themselves are ill-set, but it points the same way.
+
+**Data-not-code.** The control *also* misses the target rate (0.15/yr forward at
+its block-set τ), so the non-transfer is a property of protocol-meets-data, not a
+bug — yet the control still separates crisis from calm 18× and flags the three vol
+events (2007, 2008, COVID). The pipeline detects where fixed-line signal exists;
+the geometric channels do not supply it.
+
+**A rolling / periodically-recalibrated-threshold FAR** would plausibly fix the
+non-transfer, but switching protocol after seeing deploy-once fail is a forking
+path. It is a **separate experiment needing its own pre-registration**, not a
+patch to this run. Deploy-once is recorded as: infeasible operating point,
+inconclusive on detection, informative on the absence of fixed-line separation.
+Full pre-commitment and realized numbers in `FAR_PREREGISTRATION.md`.
+
 ## Roadmap
 
 - **v1-v3 — DONE.** Embedding, 7 channels, SLD mixed-state QFI, offline
