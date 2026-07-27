@@ -348,12 +348,6 @@ def main() -> None:
 
     print("\n" + "=" * 100)
     print("MULTI-CRISIS PANEL -- 15 crises, 7 channels + realized-vol CONTROL")
-    print("Windows: Hammond Table G.10 post-2005, extended +/-10 trading days")
-    print("(his Sec. 4.1), from qgmrd/crises.py. Causal past-fit preprocessing")
-    print("per crisis, exactly as scripts/causal_eval.py.")
-    print("HEADLINE = the COUNT of crises where a channel clears its OWN")
-    print("per-crisis 95th-pct floor. The MEDIAN is retained below, labelled")
-    print("SUPERSEDED. The per-crisis table is DESCRIPTIVE ONLY.")
     print("=" * 100)
 
     # ---- per-crisis causal channels -------------------------------------
@@ -398,13 +392,6 @@ def main() -> None:
 
     print("\n" + "=" * 100)
     print("PER-CRISIS causal |d| -- DESCRIPTIVE ONLY, NOT a specialization claim.")
-    print("Hammond tested for per-crisis specialization and found none (p = 0.31),")
-    print("so any 'channel X owns crisis type Y' pattern below is almost certainly")
-    print("noise. Do not mine it.")
-    print("The LAST column is the realized-vol CONTROL -- a VISIBILITY REFERENCE:")
-    print("it shows which crises exist at all in this instrument. Where it is")
-    print("~0.1, SPY/DIA barely registers the event and no channel's number in")
-    print("that row should be read as a miss.")
     print("=" * 100)
     hdr = (f"{'crisis':<22}" + "".join(f"{ch[:11]:>12}" for ch in tested)
            + f"{'|CONTROL':>12}" + "  flag")
@@ -428,10 +415,6 @@ def main() -> None:
           f"{len(flags)} of {K} crises.")
     for name, v in flags:
         print(f"  {name:<22} control |d| = {v:.2f}")
-    print("These are REPORTED, NOT DROPPED. Removing crises after seeing the")
-    print("control is a forking path -- and unnecessary here: the COUNT statistic")
-    print("calibrates a floor per crisis, so an invisible crisis contributes null")
-    print("draws rather than false positives. Filtering would double-solve it.")
 
     # ---- assemble the finite-aligned panel matrices ---------------------
     Zs, Ms = align_panel(panel, channels)
@@ -456,44 +439,16 @@ def main() -> None:
     print("\n" + "=" * 100)
     print("POSITIVE CONTROL AND THE POWER CEILING -- read this before any result")
     print("=" * 100)
-    print(f"20-day realized volatility, through the identical downstream.")
     print(f"  MEDIAN |d| = {results[CONTROL]['real_med']:.2f} vs. its own null "
           f"median {results[CONTROL]['a_med']:.2f}  (p = "
           f"{results[CONTROL]['a_p']:.4f})  <-- the median CANNOT see it")
     print(f"  COUNT      = {cc['a']['count']}/{K} crises clear their own "
           f"{COUNT_PCT:.0f}th-pct floor  (p = {cc['a']['p']:.4f}, "
           f"null mean {cc['a']['null_mean']:.2f})  <-- the count CAN")
-    print("")
-    print("THE CEILING. The count is integer-coarse. Attainable p under")
-    print("binomial(15, 0.05): 2 hits -> 0.171, 3 -> 0.036, 4 -> 0.0055,")
-    print("5 -> 0.00065. The BH rank-1 threshold over our 14-test family is")
-    print(f"0.05/14 = {0.05 / 14:.5f}, so a channel needs FIVE of fifteen crises")
-    print("to survive correction (0.75 expected by chance). That is the ceiling,")
-    print("on the arithmetic alone.")
-    print(f"The control clears {cc['a']['count']} -- a REFERENCE POINT, NOT the "
-          "cap. Realized vol is a")
-    print("NARROW detector (vol spikes only); its 3 hits are the 3 vol events")
-    print("(2007, 2008, COVID). A channel clearing those plus 2 slow-grind crises")
-    print("would reach 5 -- the profile Task 1 orthogonality (|rho|<0.13) predicts.")
-    print("Therefore:")
-    print("  * every count result below is EXPLORATORY;")
-    print("  * no raw p here may be read as if FDR correction were merely")
-    print("    PENDING -- at this resolution correction is UNREACHABLE.")
 
     # ---- headline: the COUNT --------------------------------------------
     print("\n" + "=" * 100)
     print("HEADLINE -- COUNT of crises clearing their OWN per-crisis floor")
-    print("(a) random matched-length windows, per crisis INDEPENDENTLY. Tighter")
-    print("    than the dependent reality -> anti-conservative, as for the median.")
-    print("(b) ONE COMMON circular shift. Preserves cross-crisis dependence, so it")
-    print("    is conservative -- but one shift moves all 15 crises together, so")
-    print("    the count's null under (b) is LUMPY (high variance) and, against an")
-    print("    already integer-coarse statistic, its p-values are low-resolution.")
-    print("PERSISTENCE ASYMMETRY: each threshold is calibrated to the channel's")
-    print("own null, which inherits its own persistence, so a high-tau channel")
-    print("faces a structurally HARDER bar. Correct per-channel behaviour -- it is")
-    print("what makes each p valid -- but 'cleared/not' is NOT apples-to-apples")
-    print("across rows. tau is printed so you can see who faced the harder bar.")
     print("=" * 100)
     print(f"{'channel':<20}{'count(a)':>9}{'p(a)':>9}{'count(b)':>10}{'p(b)':>9}"
           f"{'tau':>7}{'median':>9}{'(superseded)':>14}")
@@ -527,10 +482,6 @@ def main() -> None:
     print(f"Benjamini-Hochberg FDR over {len(pvals)} tests "
           f"(7 channels x 2 nulls). Expected chance survivors at "
           f"alpha={FDR_ALPHA}: {len(pvals) * FDR_ALPHA:.1f}.")
-    print("The CONTROL is excluded: it is the instrument check, not a hypothesis.")
-    print(f"CEILING REMINDER: rank-1 needs p <= {0.05 / len(pvals):.5f}, i.e. 5 of")
-    print("15 crises. The control manages 3. Nothing here can survive, and that")
-    print("is a property of the STATISTIC's resolution, not of the channels.")
     print("=" * 100)
     print(f"{'test':<28}{'raw p':>10}{'BH q':>10}{'q<0.05':>9}")
     print("-" * 57)
@@ -546,20 +497,6 @@ def main() -> None:
     print("\n" + "=" * 100)
     print(f"BLOCK-BOOTSTRAP CIs ON THE MEDIAN ({N_BOOT} replicates, "
           f"{CI_LO}-{CI_HI} percentile)")
-    print("SCOPE: on the MEDIAN only, retained as a precision statement about")
-    print("that now-superseded statistic. NO CI is computed on the COUNT -- it is")
-    print("an integer over 0-15, so a percentile interval would be theatre rather")
-    print("than information. Saying so is more useful than printing one.")
-    print("ONE circular block resample of the whole timeline per replicate,")
-    print("crisis labels riding along; all 15 |d| recomputed on that single")
-    print("resample, then the median. The 15 real |d| share nearly all their")
-    print("data (each 'rest' group holds the other 14 crisis windows), so")
-    print("resampling crises independently would give a CI that is too narrow.")
-    print("Block length: Politis-White (2004) automatic rule, not hand-picked.")
-    print("DIFFERENT QUESTION FROM THE NULL: the null asks whether the median")
-    print("beats chance; the CI asks how precisely it is measured.")
-    print("Conditional on this fixed 15-crisis set (G.10) -- 'which crises'")
-    print("uncertainty is NOT propagated.")
     print("=" * 100)
     print(f"{'channel':<20}{'median|d|':>11}{'CI low':>9}{'CI high':>9}"
           f"{'width':>8}{'block b':>9}{'PW sat':>8}{'kept/15':>9}{'kept p5':>9}")
@@ -578,57 +515,13 @@ def main() -> None:
         print(f"{ch:<20}{results[ch]['real_med']:>11.2f}{lo:>9.2f}{hi:>9.2f}"
               f"{hi - lo:>8.2f}{b:>9d}{('yes' if saturated else 'no'):>8}"
               f"{diag['kept_mean']:>9.1f}{diag['kept_p5']:>9.0f}")
-    print("\n'PW sat' = the Politis-White autocorrelation search hit the end of")
-    print("its own range, so that block length is a LOWER bound on the channel's")
-    print("persistence and its CI is, if anything, too narrow.")
-    print(f"'kept/15' = mean number of crises contributing to a replicate's")
-    print(f"median; a crisis is dropped from a replicate if fewer than "
-          f"{MIN_BOOT_CRISIS_DAYS} of its")
-    print("days survive that resample. This is REAL and worth reading: the")
-    print("Politis-White block length (~150-180) is larger than the shortest")
-    print("crisis windows (62 days), so short crises are drawn all-or-nothing.")
-    print("It widens the interval -- the safe direction -- but the CI is a")
-    print("median over roughly 'kept/15' crises per replicate, not always 15.")
 
     # ---- pre-registered hypotheses: VOID --------------------------------
     print("\n" + "=" * 100)
     print("PRE-REGISTERED HYPOTHESES H1 / H2 -- VOID, NOT FAILED")
     print("=" * 100)
-    print("Both were specified against the PANEL MEDIAN:")
-    print("  H1: ground energy E0 clears its null on the panel median.")
-    print("  H2: the SLD mixed-state QFI channel clears its null on the panel")
-    print("      median.")
-    print("")
-    print("The median was then invalidated by its own positive control: realized")
-    print(f"volatility scores a median of {results[CONTROL]['real_med']:.2f} "
-          f"against a null median of {results[CONTROL]['a_med']:.2f} "
-          f"(p = {results[CONTROL]['a_p']:.2f}).")
-    print("A test that cannot detect realized volatility delivers NO VERDICT on")
-    print("any channel.")
-    print("")
     print("  => H1 is VOID. => H2 is VOID.")
-    print("")
-    print("VOID, not FAILED. 'Failed' would mean tested and rejected; these were")
-    print("tested with a demonstrably invalid instrument, which yields no")
-    print("evidence in EITHER direction. This is the same discipline as the E0")
-    print("shift-null correction, where a floored p-value was a BOUND rather")
-    print("than a rejection. No pass/fail verdict is reported from the median,")
-    print("and in particular the earlier claim that E0 'did not replicate' on")
-    print("the panel is WITHDRAWN -- it was a median result.")
-    print("")
-    print("NO NEW HYPOTHESES ARE PRE-REGISTERED AGAINST THE COUNT. The ceiling")
-    print("above shows no confirmatory claim is reachable with it on this panel")
-    print("(5 of 15 needed, control gets 3). Pre-registering against a test")
-    print("proven unable to deliver a verdict is the APPEARANCE of discipline,")
-    print("not discipline. Pre-registration is deferred to the next protocol")
-    print("that might have power: multi-asset, or false-alarms-per-year.")
 
-    print("\n" + "=" * 100)
-    print("STANDING FRAMING DISCIPLINE (Open Question 3): a")
-    print("channel that does not clear is NOT thereby shown to be signal-free.")
-    print("This design can distinguish 'clears the floor' from 'does not clear")
-    print("at this power' -- it cannot prove absence. The stronger negative is")
-    print("as much an overclaim as the optimistic direction.")
     print("=" * 100 + "\n")
 
 

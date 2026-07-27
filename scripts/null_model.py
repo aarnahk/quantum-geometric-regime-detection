@@ -179,16 +179,6 @@ def main() -> None:
 
     print("\n" + "=" * 78)
     print("Null-model tests -- per-channel noise floor")
-    print("Causal (past-fit) z-scored series, SPY/DIA 2005-present.")
-    print("Null (a): random matched-length windows | Null (b): circular shift.")
-    print("Floor is PER CHANNEL (never Hammond's 0.53). |d| is FOLDED: it")
-    print("discards direction, so a wrong-way channel still scores -- 'dir'")
-    print("shows the real effect's sign. Random windows may overlap 2008/2011/")
-    print("2018, so the floor is 'harder to clear than a true null,' not clean.")
-    print("LEGEND: 'pct' = percentile of the real |d| WITHIN its own null")
-    print("(fraction of null draws BELOW it; high = strong). 'p' = fraction of")
-    print("null draws AT OR ABOVE it (low = strong). They are complements,")
-    print("pct ~ 100*(1-p) -- do not read a p-value as a percentile.")
     print("=" * 78)
 
     primary_p: list[float] = []
@@ -239,17 +229,6 @@ def main() -> None:
     print("POSITIVE CONTROL -- does the SINGLE-CRISIS test have a working")
     print("instrument? 20-day realized volatility through the identical")
     print("downstream. It is reported here and EXCLUDED from the FDR family.")
-    print("")
-    print("Reading a control FAILURE requires separating two cases that license")
-    print("OPPOSITE conclusions:")
-    print("  (a) STATISTIC INVALID -- the test is broken; every channel's result")
-    print("      on that window is uninterpretable.")
-    print("  (b) CONTROL POORLY SUITED TO THIS WINDOW -- realized vol's own")
-    print("      persistence (vol clustering) gives it a structurally high")
-    print("      floor, and/or the crisis was a slow grind rather than a vol")
-    print("      spike. The test is fine; the channels stand.")
-    print("The tau/floor columns below are what separate them: a high floor")
-    print("EXPLAINED BY a high tau is a channel property, not a test property.")
     print("=" * 78)
     print(f"\n{'crisis':<16}{'channel':<20}{'|d|':>7}{'(a)flr':>8}{'(b)flr':>8}"
           f"{'(a)pct':>8}{'(a)p':>9}{'(b)p':>9}{'tau':>8}{'Neff':>7}  clears?")
@@ -276,9 +255,6 @@ def main() -> None:
     n_ctrl = sum(ctrl_clears.values())
     print(f"CONTROL CLEARS ON {n_ctrl} OF {len(ctrl_clears)} PRIMARY CRISES: "
           + ", ".join(f"{k}={'YES' if v else 'no'}" for k, v in ctrl_clears.items()))
-    print("Compare the control's tau and floor against the other channels' on")
-    print("any window where it fails, then state which case holds. Do NOT read a")
-    print("control failure as case (a) without checking the persistence columns.")
 
     # ---- Benjamini-Hochberg across the primary family only ----
     print("\n" + "=" * 78)
@@ -297,8 +273,6 @@ def main() -> None:
         print(f"{primary_key[i]:<34}{primary_p[i]:>10.4f}{q[i]:>10.4f}{passes:>9}")
     n_pass = int((q < FDR_ALPHA).sum())
     print(f"\n{n_pass}/{len(primary_p)} primary tests survive BH-FDR at q<{FDR_ALPHA}.")
-    print("China 2015 results above are exploratory only (blind HMM control; "
-          "see README/causal_eval).")
     print()
 
 

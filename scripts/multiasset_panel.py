@@ -52,9 +52,6 @@ def main() -> None:
 
     print("\n" + "=" * 100)
     print("MULTI-ASSET PANEL (Task 3) -- SPY/TLT/UUP/GLD, AR aggregate")
-    print("HEADLINE = VISIBILITY: per-asset realized-vol control, union over assets,")
-    print("through the identical downstream. Pre-registered H: visible count rises")
-    print("materially above the SPY-alone baseline of 2 on the shared 14 crises.")
     print("=" * 100)
 
     panel: list[dict] = []
@@ -112,21 +109,10 @@ def main() -> None:
           f"({', '.join(panel[i]['name'] for i in sorted(added)) or 'none'})")
     print("\nH(multi-asset): visible count rises materially above the SPY-alone")
     print(f"baseline of 2. Observed union = {len(union)}; SPY-alone = {len(spy_which)}.")
-    print("Union is k=4 simultaneous comparisons -> read as an UPPER ENVELOPE, not")
-    print("a single-instrument p. Per-asset breakdown above is the honest detail.")
-    print("A cleared crisis licenses INTERPRETATION of that window, never a")
-    print("geometric detection claim (Task 3).")
 
     # per-crisis |d| vs own floor -- DESCRIPTIVE; explains the negative count.
     print("\n" + "-" * 100)
     print("PER-CRISIS realized-vol |d| / own 95th-pct floor (* = clears).")
-    print("DESCRIPTIVE ONLY. Near-misses are NOT detections. Per Hammond (no")
-    print("crisis-type specialization, p=0.31) do not mine 'asset X owns crisis Y'.")
-    print("Shown because it explains the count of 2: several bond/FX crises carry")
-    print("ELEVATED |d| in TLT/UUP that sits JUST UNDER the realized-vol floor,")
-    print("which is structurally high (vol-clustering persistence). The binding")
-    print("limit is the control's floor, not the instrument -- which is exactly")
-    print("what the pre-registered slow-grind second control (Sec 8 item 7) targets.")
     print("-" * 100)
     print(f"{'crisis':<22}" + "".join(f"{a:>13}" for a in ASSETS))
     for i, pc_ in enumerate(panel):
@@ -140,10 +126,6 @@ def main() -> None:
     # ---- geometric channels: EXPLORATORY count + FDR ------------------------
     print("\n" + "=" * 100)
     print("GEOMETRIC CHANNELS -- EXPLORATORY. Same ceiling as the SPY/DIA panel:")
-    print(f"5 of {K} crises needed to survive FDR (see multi_crisis_panel.py). No")
-    print("confirmatory claim is reachable; no raw p is FDR-pending, it is")
-    print("unreachable. tau printed -- persistence asymmetry means cleared/not is")
-    print("NOT apples-to-apples across rows.")
     print("=" * 100)
     print(f"{'channel':<20}{'count(a)':>9}{'p(a)':>9}{'count(b)':>10}{'p(b)':>9}{'tau':>7}")
     print("-" * 64)

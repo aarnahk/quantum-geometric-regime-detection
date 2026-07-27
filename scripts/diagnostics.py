@@ -218,7 +218,6 @@ def main() -> None:
 
     print(RULE)
     print("HARNESS DIAGNOSTICS -- positive controls and bug checks")
-    print("Diagnostic only: no existing result is recomputed or changed.")
     print(RULE)
 
     # --- verify the fast z-score is the production z-score ----------------
@@ -240,11 +239,6 @@ def main() -> None:
 
     # ======================================================================
     head(1, "POSITIVE CONTROL: realized volatility through the same harness")
-    print("SPY 20-day trailing realized vol -> same causal z-score, same masks,")
-    print("same |d|, same two nulls, same panel median, same FDR. No fitting, so")
-    print("this isolates the EVALUATION from the EMBEDDING.")
-    print("\nIf realized vol does NOT clear, the harness cannot detect a signal")
-    print("that must be present, and every negative in this repo is void.")
 
     Zs, Ms = align_panel(panel, channels)
     results = {ch: panel_null_tests(Zs[ch], Ms[ch]) for ch in channels}
@@ -262,13 +256,6 @@ def main() -> None:
 
     # ======================================================================
     head("1b", "What panel statistic WOULD have found the control?")
-    print("Run on the POSITIVE CONTROL ONLY, deliberately. If we scanned")
-    print("statistics across the geometric channels and adopted whichever one")
-    print("flattered them, that is a forking path. Choosing the statistic on a")
-    print("channel whose answer we already know -- realized vol MUST separate --")
-    print("keeps the choice uncontaminated. The geometric channels are NOT")
-    print("evaluated here; that is a separate, pre-registered run once a")
-    print("statistic is chosen.")
     print("\nSame per-crisis null draws, four different panel summaries:")
     ctrl = results["realized_vol_20d"]
     da = ctrl["draws_a"]
@@ -297,10 +284,6 @@ def main() -> None:
 
     # ======================================================================
     head(2, "POSITIVE CONTROL: end-to-end synthetic (ground truth known)")
-    print("Synthetic SPY/DIA on the REAL trading calendar, vol/corr spikes")
-    print("injected on the REAL 15 crisis windows. Every line of the panel runs")
-    print("unchanged; only the prices are manufactured. Failure here means the")
-    print("defect is in the evaluation CODE, not the data.")
 
     masks_union_prices = np.zeros(len(prices.index), dtype=bool)
     for name, sm, em in CRISIS_WINDOWS:
@@ -343,9 +326,6 @@ def main() -> None:
 
     # ======================================================================
     head(3, "HMM convergence and posterior saturation")
-    print("The HMM control has the LOWEST panel median of all seven. If it is")
-    print("not converging, or its posterior is pinned at 0/1, the writeup's")
-    print("'even the control fails' framing is unsupported and must change.")
     print(f"\n{'crisis':<22}{'converged':>11}{'iters':>7}{'delta':>12}"
           f"{'pinned@1':>10}{'pinned@0':>10}{'|d|':>7}")
     print("-" * 79)
@@ -361,11 +341,6 @@ def main() -> None:
 
     # ======================================================================
     head(4, "Mask alignment sensitivity (+/- 60 trading days)")
-    print("Circularly shift every crisis mask together and recompute the panel")
-    print("median. A localized, correctly-aligned signal must PEAK at shift 0.")
-    print("Flat => masks misaligned, or signal not localized where we think.")
-    print("Realized vol is the reference curve for what 'localized' looks like.")
-    print("REPORTED, NOT ADOPTED: windows are not moved to wherever |d| peaks.")
     print(f"\n{'channel':<20}" + "".join(f"{s:>7}" for s in SHIFT_GRID) + "   peak")
     print("-" * (20 + 7 * len(SHIFT_GRID) + 8))
     for ch in channels:
@@ -385,12 +360,6 @@ def main() -> None:
 
     # ======================================================================
     head("4b", "Alignment, PER CRISIS, on crises the control actually sees")
-    print("Test 4 shifts all 15 masks and takes the median, so if the median is")
-    print("dominated by crises the control cannot see, a flat curve says nothing")
-    print("about alignment. This isolates the question: on the crises where")
-    print("realized vol has a large |d|, does its |d| PEAK at shift 0?")
-    print("Peaks at 0 => masks are correctly aligned and the flatness in test 4")
-    print("is a property of the MEDIAN, not of the masks.")
     Zc, Mc_ = Zs["realized_vol_20d"], Ms["realized_vol_20d"]
     M_len = Zc.shape[1]
     strong = np.argsort(-results["realized_vol_20d"]["real_per_crisis"])[:4]
@@ -408,14 +377,6 @@ def main() -> None:
 
     # ======================================================================
     head(5, "Smoothing ablation: causal_zscore w in {1, 5, 10, 20}")
-    print("Algorithm 1 smooths with a 20-day trailing mean before z-scoring,")
-    print("which spreads a step into a ramp and lifts pre-crisis days.")
-    print("NOTE ON THE PREMISE: under G.10 +/-10 the SHORTEST windows are 62-63")
-    print("trading days (Flash Crash 62, Brexit 62, Repo 63) -- the +/-10")
-    print("extension roughly doubled the bare G.10 months, so the dilution is")
-    print("milder than '20-day smoother on a 30-day event', though a 20-day")
-    print("smoother against 62 days still blurs about a third of it.")
-    print("ALL values reported; none adopted. Picking the winning w is tuning.")
     short = ["2010 Flash Crash", "2016 Brexit", "2019 Repo Crisis"]
     short_i = [i for i, c in enumerate(panel_raw) if c["name"] in short]
     for w in W_ABLATION:
@@ -435,12 +396,6 @@ def main() -> None:
 
     # ======================================================================
     head(6, "Expanding-normalization drift: does |d| decay with crisis date?")
-    print("causal_zscore normalizes against ALL prior smoothed values, so by")
-    print("2020 the denominator includes 2008. |d| compares a window to the")
-    print("rest of the SAME series, so a later crisis divided by a bigger")
-    print("denominator scores lower -- the yardstick grew, not the market.")
-    print("CAVEAT: 15 points, and crises genuinely differ in severity. A null")
-    print("result here does NOT rule drift out. This is a screen, not a proof.")
     years = np.array([c["ctx"]["start"].year + c["ctx"]["start"].dayofyear / 365.0
                       for c in panel])
     print(f"\n{'channel':<20}{'spearman':>10}{'p':>9}{'OLS slope/yr':>15}")
@@ -452,8 +407,6 @@ def main() -> None:
         slope = sps.linregress(years, d).slope
         print(f"{ch:<20}{rho:>10.2f}{pv:>9.3f}{slope:>15.4f}")
 
-    print("\nThe mechanism itself (expanding SD of the smoothed series at each")
-    print("crisis midpoint) -- if drift is real this must RISE with date:")
     print(f"{'crisis':<22}{'realized_vol sd':>17}{'spectral_ent sd':>17}")
     print("-" * 56)
     for k, c in enumerate(panel_raw):
@@ -466,9 +419,6 @@ def main() -> None:
 
     # ======================================================================
     head(7, "NaN / warm-up audit: finite z-scores inside each crisis window")
-    print("A partly-NaN window silently shrinks its own sample and inflates the")
-    print("variance of its |d|. Expected clean (earliest window is at index")
-    print("~610, warm-up ends ~80), but 'expected clean' is what audits check.")
     print(f"\n{'crisis':<22}{'window':>8}" +
           "".join(f"{ch[:9]:>10}" for ch in channels))
     print("-" * (30 + 10 * len(channels)))

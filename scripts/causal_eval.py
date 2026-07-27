@@ -166,10 +166,6 @@ def main() -> None:
 
     print("\n" + "=" * 68)
     print("Task 2 -- causal (past-fit) preprocessing vs. offline event study")
-    print("SPY/DIA, 2005-present. Gap between columns = size of the look-ahead.")
-    print("Caveat: Gap 2 is still open -- Cohen's d compares the crisis window")
-    print("against future days too, so even 'causal' here is offline")
-    print("separability (leaky preprocessing removed), not real-time detection.")
     print("=" * 68)
 
     for name, start_month, end_month in CRISES:

@@ -186,8 +186,6 @@ def main() -> None:
 
     print("\n" + "=" * 100)
     print("CAUSAL FALSE-ALARM-RATE (FAR) EVALUATION -- SPY/DIA")
-    print("Pre-registered in FAR_PREREGISTRATION.md. Deploy-once: fit + freeze on")
-    print("the calm calibration block, run forward. NOT walk-forward.")
     print("=" * 100)
     print(f"calibration block : {idx[block][0].date()} -> {idx[block][-1].date()} "
           f"({n_block} rows, ~{n_block / TRADING_YEAR:.2f} yr)")
@@ -239,11 +237,6 @@ def main() -> None:
     # =====================================================================
     print("\n" + "=" * 100)
     print(f"HEADLINE -- target FAR = {TARGET_FAR:.1f} alarm/yr, per-channel tau, frozen")
-    print("Detection = detector fires on any day inside a crisis window.")
-    print("Chance floor = 95th pct of the per-channel circular-shift null count.")
-    print("PERSISTENCE ASYMMETRY: the floor inherits each channel's tau_autocorr,")
-    print("so a persistent channel faces a HIGHER floor -- 'cleared/didn't' is NOT")
-    print("apples-to-apples across rows. tau_ac printed so the harder bars show.")
     print("=" * 100)
 
     results = {}
@@ -336,11 +329,7 @@ def main() -> None:
 
     # ---- DYNAMIC RANGE / TRANSFER (why deploy-once is infeasible) --------
     print("\n" + "=" * 100)
-    print("DYNAMIC RANGE / TRANSFER -- the block's causal-z range vs the deployed")
-    print("range. A threshold set on the compressed calm-block range sits low in")
-    print("the forward distribution and does NOT transfer: forward FAR @ block-tau")
-    print("is off the 1/yr target in both directions. 'FAR@blkZmax' is the forward")
-    print("FAR the HIGHEST admissible (block-max) threshold would still give.")
+    print("DYNAMIC RANGE / TRANSFER -- block causal-z range vs the deployed range")
     print("=" * 100)
     print(f"{'channel':<20}{'blkZmax':>9}{'fwdZmax':>9}{'FAR@blkTau':>12}{'FAR@blkZmax':>13}")
     print("-" * 63)
@@ -352,11 +341,7 @@ def main() -> None:
 
     # ---- FIXED-LINE SEPARATION (the informative residue) ----------------
     print("\n" + "=" * 100)
-    print("FIXED-LINE SEPARATION -- does the detector cross its tau MORE during")
-    print("crises than during calm? This is the clean residue: raw FAR/counts are")
-    print("contaminated by drift+chattiness, but the crisis-vs-calm exceedance")
-    print("RATIO at a fixed line is interpretable. Ratio ~1 or below = no positive")
-    print("separation. Channels with tiny exceedance% fire too rarely to test.")
+    print("FIXED-LINE SEPARATION -- crisis-vs-calm exceedance ratio at a fixed tau")
     print("=" * 100)
     print(f"{'channel':<20}{'tau':>8}{'crisisExc%':>12}{'calmExc%':>11}{'ratio':>9}")
     print("-" * 60)
@@ -371,8 +356,6 @@ def main() -> None:
     # ---- (ii) IN-SAMPLE BLOCK FAR CHECK (Sec. 7-ii) ---------------------
     print("\n" + "=" * 100)
     print("(ii) IN-SAMPLE CHECK -- block FAR must ~ target by construction")
-    print(f"     (up to integer-event granularity of a ~{n_block / TRADING_YEAR:.1f}-yr block;")
-    print("      a large miss means the calibration did NOT execute, i.e. a bug)")
     print("=" * 100)
     for ch in channels:
         r = results[ch]
@@ -383,9 +366,6 @@ def main() -> None:
     # ---- (iii) FORWARD CALM FAR BY ERA (Sec. 7-iii) ---------------------
     print("\n" + "=" * 100)
     print("(iii) FORWARD CALM FAR BY 5-YEAR ERA -- the deploy-once drift diagnostic")
-    print("Bins fixed a priori on the decade grid (NOT placed after seeing jumps).")
-    print("A RISING late-era FAR reflects a frozen threshold under regime drift and")
-    print("is NOT read as detection (FAR_PREREGISTRATION Sec. 8, first caveat).")
     print("=" * 100)
     years = idx.year.values
     era_calm = []
@@ -412,7 +392,6 @@ def main() -> None:
     # ---- BH-FDR over the 7-detector family (Sec. 6, unconditional) ------
     print("\n" + "=" * 100)
     print("BH-FDR over the 7-detector family (6 geometric + HMM), control EXCLUDED.")
-    print("Applied UNCONDITIONALLY -- fixed before the numbers, run regardless.")
     print(f"Expected chance survivors at alpha={FDR_ALPHA}: {len(tested) * FDR_ALPHA:.2f}.")
     print("=" * 100)
     pvals = [results[ch]["p"] for ch in tested]
@@ -431,8 +410,7 @@ def main() -> None:
 
     # ---- sensitivity sweep (descriptive only) --------------------------
     print("\n" + "=" * 100)
-    print("SENSITIVITY SWEEP -- detection count vs target FAR (DESCRIPTIVE ONLY;")
-    print("1/yr is the headline, the sweep is never mined for a flattering target).")
+    print("SENSITIVITY SWEEP -- detection count vs target FAR")
     print("=" * 100)
     print(f"{'channel':<20}" + "".join(f"{'@' + str(t) + '/yr':>12}" for t in FAR_SWEEP))
     print("-" * (20 + 12 * len(FAR_SWEEP)))
@@ -449,14 +427,7 @@ def main() -> None:
         tag = " C" if ch == CONTROL else ""
         print(f"{ch:<20}" + "".join(f"{c:>12}" for c in cells) + tag)
 
-    print("\n" + "=" * 100)
-    print("STANDING DISCIPLINE: a channel not clearing its floor is NOT shown to be")
-    print("signal-free -- only that FAR at this power did not detect it. And the 12")
-    print("non-vol crises have no working positive control, so a FAR 'detection'")
-    print("there is UNVALIDATED (carried from the panel). See FAR_PREREGISTRATION")
-    print("Sec. 8. Naming: this is a causal frozen-threshold FAR event study, NOT")
-    print("walk-forward.")
-    print("=" * 100 + "\n")
+    print("\n" + "=" * 100 + "\n")
 
 
 def _first_crisis_months() -> tuple:
