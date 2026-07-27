@@ -1,4 +1,4 @@
-"""Multi-asset panel (HANDOFF Task 3) -- the pre-registered VISIBILITY headline.
+"""Multi-asset panel (Task 3) -- the pre-registered VISIBILITY headline.
 
 WHY. The SPY/DIA panel sees only equity-vol events: its realized-vol control
 clears just 3 of 15 crises (2007, 2008, COVID), all US-equity vol spikes. The
@@ -27,7 +27,7 @@ above the SPY-alone baseline of 2 on the shared 14. Reported regardless.
 Bookkeeping (pre-registered): a union over k per-asset controls is k simultaneous
 comparisons, so it inflates the count vs a single control. Both are reported --
 the per-asset breakdown AND the union -- and the union is read as an upper
-envelope, not a single-instrument p-value. Per HANDOFF Task 3, a control clearing
+envelope, not a single-instrument p-value. Per Task 3, a control clearing
 on a newly-visible crisis licenses INTERPRETATION of that window, never a
 detection claim about a geometric channel.
 
@@ -78,7 +78,7 @@ def main() -> None:
     rv = {a: realized_vol_series(prices[a]).reindex(idx).values for a in ASSETS}
 
     print("\n" + "=" * 100)
-    print("MULTI-ASSET PANEL (HANDOFF Task 3) -- SPY/TLT/UUP/GLD, AR aggregate")
+    print("MULTI-ASSET PANEL (Task 3) -- SPY/TLT/UUP/GLD, AR aggregate")
     print("HEADLINE = VISIBILITY: per-asset realized-vol control, union over assets,")
     print("through the identical downstream. Pre-registered H: visible count rises")
     print("materially above the SPY-alone baseline of 2 on the shared 14 crises.")
@@ -142,7 +142,7 @@ def main() -> None:
     print("Union is k=4 simultaneous comparisons -> read as an UPPER ENVELOPE, not")
     print("a single-instrument p. Per-asset breakdown above is the honest detail.")
     print("A cleared crisis licenses INTERPRETATION of that window, never a")
-    print("geometric detection claim (HANDOFF Task 3).")
+    print("geometric detection claim (Task 3).")
 
     # per-crisis |d| vs own floor -- DESCRIPTIVE; explains the negative count.
     print("\n" + "-" * 100)

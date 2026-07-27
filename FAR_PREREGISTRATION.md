@@ -5,11 +5,11 @@ This document fixes every knob of the FAR evaluation — architecture, calibrati
 block, threshold rule, metrics, expectation, and caveats — so that none of them
 can be chosen after seeing which choice flatters a channel. It is the FAR analog
 of the discipline the rest of the repo already applies to feature selection and
-to the panel's count statistic (HANDOFF Sec. 2, Sec. 6 Open Question 4). Nothing
+to the panel's count statistic (see README). Nothing
 below is to be revised in response to results; if a knob genuinely must change,
 that is a new pre-registration with the reason recorded, not an edit here.
 
-Naming discipline (HANDOFF Sec. 2b): this protocol is a **causal frozen-threshold
+Naming discipline (causal vs. walk-forward, see README): this protocol is a **causal frozen-threshold
 FAR event study**. It is **not** "walk-forward" — there are no monthly refits.
 The term walk-forward remains reserved for roadmap item 5.
 
@@ -43,7 +43,7 @@ surface **except the threshold, which is the entire risk** (Sec. 4).
 
 ## 2. Pre-registered expectation (recorded before results)
 
-Every channel was at chance under Cohen's *d* (HANDOFF Sec. 3) and under the
+Every channel was at chance under Cohen's *d* (see README) and under the
 panel count (Open Question 4). The base rate is therefore that **FAR also shows
 little detection beyond the chance floor** (Sec. 6). FAR is run because it asks a
 sharper question the blunt metric could miss — **not because a positive is
@@ -134,7 +134,7 @@ calibration.
 ## 4. Threshold calibration — the whole game
 
 τ is the only knob, and a τ nudged until crises light up is the +0.415 optimism
-trap (HANDOFF Sec. 6) in a new costume. Rules:
+trap (see README) in a new costume. Rules:
 
 **Per-channel τ, common target rate.** Channels differ enormously in persistence
 (panel τ_autocorr 63 → 483), so a shared `z > 2` cut yields wildly different
@@ -327,7 +327,7 @@ maps to a command a reader can run and match.
 records what happened. Ran `scripts/far_eval.py` on the pinned SPY/DIA snapshot;
 the causality audit passed (fit rows 0–608 ⊆ block; 0 crisis days and 0 forward
 days in the fit set) and the run is deterministic. Numbers below are from that
-run, not from recollection (HANDOFF's "live re-run is authoritative" rule).
+run, not from recollection (the "live re-run is authoritative" rule).
 
 **Verdict: FAR is INCONCLUSIVE as a detection test on this data — the deploy-once
 operating point cannot be set causally. This is not a null.** Same discipline as

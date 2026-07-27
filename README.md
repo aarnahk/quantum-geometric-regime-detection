@@ -505,7 +505,7 @@ ground states that depend on the PCA frame, so it is frame-sensitive too — les
 directly than Berry, but not invariant. Net: causal fitting neither clearly
 helps nor hurts SLD.
 
-## Null-model tests (HANDOFF §8.1b)
+## Null-model tests
 
 ```bash
 python scripts/null_model.py
@@ -650,7 +650,7 @@ control for *volatility* events. So:
 ### The SLD channel, reported as pre-registered
 
 The commitment to report this channel's result regardless of outcome was
-recorded before the analysis was run (HANDOFF §2d). The outcome is
+recorded before the analysis was run. The outcome is
 unfavorable and is stated in the committed language:
 
 > The SLD mixed-state QFI channel is **mathematically correct**

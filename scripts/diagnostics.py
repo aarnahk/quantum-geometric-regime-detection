@@ -83,7 +83,7 @@ its integer-coarse resolution means no confirmatory claim is reachable there.
 FORKING-PATH DISCIPLINE. Tests 4, 5 and 6 sweep a parameter. Every value is
 reported; none is adopted. Moving the windows to wherever |d| peaks, or picking
 the smoothing width that maximises the panel median, is precisely the tuning
-the honesty architecture forbids (HANDOFF Sec. 6). These sweeps diagnose the
+the honesty architecture forbids (see README). These sweeps diagnose the
 harness; they do not choose a protocol.
 
     python scripts/diagnostics.py
@@ -176,8 +176,8 @@ def instrumented_hmm(returns: np.ndarray, fit_mask: np.ndarray) -> dict:
     high = int(np.argmax(model.covars_.reshape(2)))
     post = model.predict_proba(r.reshape(-1, 1))[:, high]
     hist = list(model.monitor_.history)
-    # hmmlearn exposes this as `converged` here, NOT `converged_` as HANDOFF
-    # Sec. 6 records -- following that note verbatim raises AttributeError.
+    # hmmlearn exposes this as `converged` here, NOT `converged_` as an
+    # earlier note claimed -- following that verbatim raises AttributeError.
     mon = model.monitor_
     converged = getattr(mon, "converged", getattr(mon, "converged_", None))
     return {

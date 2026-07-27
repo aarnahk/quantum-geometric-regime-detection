@@ -1,10 +1,10 @@
-"""Cross-asset aggregation for the multi-asset panel (HANDOFF Task 3).
+"""Cross-asset aggregation for the multi-asset panel (Task 3).
 
 With k assets there are k(k-1)/2 pairwise correlations; feeding all of them as
 features is the scaling problem the aggregate exists to avoid. Two candidate
 scalar summaries of "how coupled is the system right now" are provided, and the
 choice between them is settled by the pre-registered degeneracy diagnostic in
-``scripts/`` -- NOT by which one flatters the channels (HANDOFF Task 3):
+``scripts/`` -- NOT by which one flatters the channels (Task 3):
 
 ``absorption_ratio_series``      : top-eigenvalue share lambda_1 / trace of the
                                    rolling correlation matrix (Absorption Ratio,
@@ -43,7 +43,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-# Risk-direction sign map, fixed a priori by asset class (HANDOFF Task 3).
+# Risk-direction sign map, fixed a priori by asset class (Task 3).
 # Risk-on assets are the reference (+1); the dollar is the sole risk-off leg and
 # is flipped (-1) so co-movement in a stress episode reads as positive
 # correlation. AR ignores this map (sign-invariant); it affects only MC.

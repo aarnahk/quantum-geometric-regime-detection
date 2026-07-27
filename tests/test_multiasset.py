@@ -1,4 +1,4 @@
-"""Multi-asset cross-asset aggregates (HANDOFF Task 3)."""
+"""Multi-asset cross-asset aggregates (Task 3)."""
 
 import numpy as np
 import pandas as pd

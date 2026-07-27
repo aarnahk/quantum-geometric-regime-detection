@@ -26,7 +26,7 @@ DATA_START = "2005-01-01"
 DATA_END = "2026-07-01"
 CACHE_PATH = Path(__file__).resolve().parent.parent / "data" / "spy_dia_close.csv"
 
-# Multi-asset panel (HANDOFF Task 3): a SECOND pinned snapshot, added alongside
+# Multi-asset panel (Task 3): a SECOND pinned snapshot, added alongside
 # the SPY/DIA one (never overwriting it, so existing results still reproduce).
 # UUP inception is 2007-02, so an all-columns frame starts ~2007 and the panel
 # drops the 2007 Quant Meltdown -- pre-registered as a 14-crisis panel.
@@ -122,7 +122,7 @@ def load_prices(tickers=("SPY", "DIA"), start=DATA_START, end=DATA_END,
 
 def load_multi_asset_prices(tickers=MULTI_ASSET_TICKERS, start=DATA_START,
                             end=DATA_END, refresh=False):
-    """Pinned loader for the multi-asset panel snapshot (HANDOFF Task 3).
+    """Pinned loader for the multi-asset panel snapshot (Task 3).
 
     Same reproducibility contract as ``load_prices`` -- reads the committed
     ``multi_asset_close.csv`` if present, else fetches once and writes it. Kept

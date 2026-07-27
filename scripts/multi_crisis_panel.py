@@ -1,6 +1,6 @@
-"""Multi-crisis panel (HANDOFF Sec. 8, item 1) -- the critical-path task.
+"""Multi-crisis panel -- the critical-path task.
 
-WHY THIS EXISTS. The null-model tests (scripts/null_model.py, HANDOFF Open
+WHY THIS EXISTS. The null-model tests (scripts/null_model.py, Open
 Question 3) found that essentially nothing clears its own noise floor on a
 single crisis -- including the Gaussian HMM control. That result cannot
 distinguish "no signal" from "signal too weak to see with one short window,"
@@ -121,7 +121,7 @@ count, from the SAME draw family so each stays self-consistent:
 The two nulls BRACKET the truth. A channel clearing only (a) is a weaker
 result than one clearing both, and is reported as such.
 
-Block-bootstrap CIs (HANDOFF Sec. 8 item 1; the Task 2 writeup defers to these
+Block-bootstrap CIs (see README; the Task 2 writeup defers to these
 in several places). The null and the CI answer DIFFERENT questions: the null
 asks whether a statistic exceeds chance (location), the CI asks how precisely it
 is measured (width).
@@ -767,7 +767,7 @@ def main() -> None:
     print("that might have power: multi-asset, or false-alarms-per-year.")
 
     print("\n" + "=" * 100)
-    print("STANDING FRAMING DISCIPLINE (HANDOFF Sec. 2d, Open Question 3): a")
+    print("STANDING FRAMING DISCIPLINE (Open Question 3): a")
     print("channel that does not clear is NOT thereby shown to be signal-free.")
     print("This design can distinguish 'clears the floor' from 'does not clear")
     print("at this power' -- it cannot prove absence. The stronger negative is")

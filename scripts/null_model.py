@@ -1,4 +1,4 @@
-"""Null-model tests (HANDOFF Sec. 8, item 1b): does each channel clear its own
+"""Null-model tests: does each channel clear its own
 noise floor?
 
 Every Cohen's |d| in this repo has so far been reported against a *missing*
@@ -28,7 +28,7 @@ The floor is computed PER CHANNEL from that channel's own series: Hammond's
 ~0.53 came from his pipeline, and a floor depends on each channel's own
 distributional shape (heavy-tailed series inflate it). We never import 0.53.
 
-Reporting is pre-registered before any result exists (HANDOFF Sec. 2d): all
+Reporting is pre-registered before any result exists: all
 seven channels are reported on every window regardless of outcome, INCLUDING
 the flagship SLD channel. A channel failing to clear its null -- "mathematically
 correct, novel, decorrelated, and not demonstrated to detect above chance" --
@@ -61,7 +61,7 @@ Four decisions fixed up front (see also the caveats printed by main()):
      transparency, and flag it. The null test itself is on |d| vs. |d|.
 
 Runs on the CAUSAL (past-fit) z-scored series -- the same per-crisis
-preprocessing as scripts/causal_eval.py (HANDOFF Sec. 7). The nulls are pure
+preprocessing as scripts/causal_eval.py. The nulls are pure
 score-series transforms: no re-embedding, no re-fitting of the pipeline.
 
 Crisis windows come from the shared registry (``qgmrd/crises.py``): Hammond
@@ -242,7 +242,7 @@ def main() -> None:
     rv = realized_vol_series(prices["SPY"]).reindex(idx).values
 
     print("\n" + "=" * 78)
-    print("Null-model tests (HANDOFF Sec. 8.1b) -- per-channel noise floor")
+    print("Null-model tests -- per-channel noise floor")
     print("Causal (past-fit) z-scored series, SPY/DIA 2005-present.")
     print("Null (a): random matched-length windows | Null (b): circular shift.")
     print("Floor is PER CHANNEL (never Hammond's 0.53). |d| is FOLDED: it")

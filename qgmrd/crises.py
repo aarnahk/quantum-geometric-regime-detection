@@ -14,7 +14,7 @@ now lives in exactly one place and every script imports it.
 The 15 windows below are POST-2005 (the span of our pinned price snapshot) and
 are verbatim from Table G.10 -- Hammond's own post-2005 null panel. They are
 not to be modified, tuned, or added to: choosing windows after seeing results
-is the forking path the honesty architecture exists to prevent (HANDOFF Sec. 2).
+is the forking path the honesty architecture exists to prevent.
 
 A knock-on benefit of the extension: the past-fit cutoff is computed from the
 EXTENDED window start, so the preprocessing fit now ends ~20 trading days

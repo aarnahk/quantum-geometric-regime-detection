@@ -1,4 +1,4 @@
-"""Task 2 (HANDOFF Sec. 7): causal (past-fit) preprocessing evaluation.
+"""Task 2: causal (past-fit) preprocessing evaluation.
 
 Every prior number in this repo fits the StandardScaler and PCA on the *whole*
 price history -- including the crisis being detected. That is an offline event
@@ -24,14 +24,14 @@ Protocol, per crisis:
      side by side. The GAP between the two columns is the result.
 
 Operators are data-independent (seeded), so they need no causal handling -- the
-same operators are used both ways (HANDOFF Sec. 5). The HMM baseline IS refit
+same operators are used both ways (see README). The HMM baseline IS refit
 causally here (on pre-cutoff returns only), so the baseline column is honest
 end-to-end rather than secretly still global.
 
 Scope note -- this closes Gap 1 (leaky preprocessing) only. Gap 2 remains open:
 Cohen's d still compares the crisis window against ALL other days, including
 future ones, so even the causal column is offline separability, not real-time
-detection (HANDOFF Sec. 2b). Do not read the causal |d| as a deployment number.
+detection (see README). Do not read the causal |d| as a deployment number.
 
     python scripts/causal_eval.py
 """

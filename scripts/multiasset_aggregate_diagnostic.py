@@ -1,4 +1,4 @@
-"""Pre-registered AR-vs-MC degeneracy diagnostic (HANDOFF Task 3).
+"""Pre-registered AR-vs-MC degeneracy diagnostic (Task 3).
 
 Decides the single cross-asset aggregate for the multi-asset panel BEFORE the
 panel is run, on a HELD-OUT, genuinely-calm reference -- never on the 14

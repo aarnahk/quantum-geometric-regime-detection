@@ -45,7 +45,7 @@ def build_features(prices: pd.DataFrame) -> pd.DataFrame:
 def build_features_multiasset(
     prices: pd.DataFrame, aggregate: str = "AR", corr_window: int = CORR_WINDOW
 ) -> pd.DataFrame:
-    """k-asset feature frame for the multi-asset panel (HANDOFF Task 3).
+    """k-asset feature frame for the multi-asset panel (Task 3).
 
     A SEPARATE builder from ``build_features`` so the validated 2-asset pipeline
     (and every SPY/DIA result) is untouched -- the versioned-break discipline.

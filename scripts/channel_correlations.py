@@ -1,7 +1,7 @@
-"""Task 1 (HANDOFF Sec. 7): pairwise correlation matrix of all seven causal
+"""Task 1: pairwise correlation matrix of all seven causal
 z-scored channels on real SPY/DIA data.
 
-Answers Open Question 1 (HANDOFF Sec. 6): is the SLD mixed-state QFI channel
+Answers Open Question 1 (see README): is the SLD mixed-state QFI channel
 empirically redundant with the pure-state channels it generalizes, or does it
 carry decorrelated information? This is an offline-preprocessing run (same
 scaler/PCA-on-everything caveat as v0-v3); it is orthogonal to the causal-
