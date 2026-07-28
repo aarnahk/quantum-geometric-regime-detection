@@ -18,6 +18,14 @@ only](#validated-on-volatility-events-only)), are the limits. Every effect size
 is un-cleared *and* untested at useful power, not evidence of absence. Nothing
 claims prediction: these are contemporaneous *detection* observables.
 
+## Results summarized
+
+- **No confirmatory detection is reachable at this resolution.** The count statistic needs 5 of 15 crises to survive FDR; the realized-volatility control reaches 3 of 15 (p = 0.039), below the bar, and no geometric channel clears more than one crisis.
+- **The SLD mixed-state channel is decorrelated but undetected.** The novel extension correlates with every other channel at |ρ| < 0.13 (empirically distinct, answering Open Question 1), yet does not clear its noise floor on any window tested. Orthogonality and detection are independent properties, and only the first is established.
+- **Ground energy `E0` is the only channel that ever clears a floor** (2022 Rate Hikes, 1 of 28 primary-family tests), but at 1 survivor against 1.4 expected by chance, so it is not read as a detection.
+- **Reduced purity reproduces Hammond's null result:** it leads rankings without clearing noise (p = 0.18 in his pipeline, p ≈ 0.07 to 0.09 here), an independent reproduction of a negative.
+- **The harness is validated on volatility events only.** The control detects the three vol crises (2007, 2008 GFC, COVID); the other 12 crises have no working positive control.
+
 ## Method
 
 Per trading day, a rolling feature vector `x_t ∈ ℝ¹¹` (returns, 5/20-day vol,
