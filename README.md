@@ -21,7 +21,7 @@ claims prediction: these are contemporaneous *detection* observables.
 ## Results summarized
 
 - **No confirmatory detection is reachable at this resolution.** The count statistic needs 5 of 15 crises to survive FDR; the realized-volatility control reaches 3 of 15 (p = 0.039), below the bar, and no geometric channel clears more than one crisis.
-- **The SLD mixed-state channel is decorrelated but undetected.** The novel extension correlates with every other channel at |ρ| < 0.13 (empirically distinct, answering Open Question 1), yet does not clear its noise floor on any window tested. Orthogonality and detection are independent properties, and only the first is established.
+- **The SLD mixed-state channel is decorrelated but undetected.** The novel extension correlates with every other channel at |ρ| < 0.13 (empirically distinct, not a redundant repackaging of the pure-state channels), yet does not clear its noise floor on any window tested. Orthogonality and detection are independent properties, and only the first is established.
 - **Ground energy `E0` is the only test to survive FDR correction** (2022 Rate Hikes, 1 of 28 primary-family tests), but at 1 survivor against 1.4 expected by chance, it is not read as a detection.
 - **Reduced purity reproduces Hammond's null result:** it leads rankings without clearing noise (p = 0.18 in his pipeline, p ≈ 0.07 to 0.09 here), an independent reproduction of a negative.
 - **The harness is validated on volatility events only.** The control detects the three vol crises (2007, 2008 GFC, COVID); the other 12 crises have no working positive control.
@@ -83,7 +83,7 @@ spectral entropy: ρ = 0.121 Pearson, 0.126 Spearman; largest Pearson/Spearman g
 0.06), roughly half Hammond's geometric-classical benchmark (mean |ρ| ≈ 0.22).
 The other six correlate far more (purity vs. `E0` −0.90; Berry vs. QFI log-det
 ~0.70–0.74; spectral vs. HMM ~0.64–0.71). So the mixed-state generalization is
-**empirically distinct**, answering Open Question 1, but orthogonality and
+**empirically distinct** (not a redundant repackaging of the pure-state channels it generalizes), but orthogonality and
 detection are independent, and only the first is established: SLD does not clear
 its floor on any window tested (below). (Pearson/Spearman diverge >0.1 for two
 Berry-phase-rate pairs, a monotonic-nonlinear step-difference effect; doesn't
@@ -341,7 +341,7 @@ events. Its three panel hits (2007, 2008 GFC, COVID) are exactly the three vol
 spikes. On the **other 12 crises, including 2022, where vol fails (|d| = 0.53,
 p ≈ 0.31) but `E0` clears**: there is no working positive control. The fix is a
 second control sensitive to slow-grind crises (trailing drawdown, or term-
-structure / vol-of-vol) through the identical downstream (roadmap item 7); it
+structure / vol-of-vol) through the identical downstream; it
 should precede any further reading of per-channel results on non-vol crises.
 
 ### Multi-asset panel, Task 3, a null result (`python scripts/multiasset_panel.py`)
@@ -379,8 +379,7 @@ matched control clear those crises, or is the signal absent?) is **untested**; t
 two explanations predict the same output here. Geometric channels: 0 of 14 survive
 FDR (ceiling 5 of 14), each clearing ~one out-of-control crisis (QFI log-det →
 2019 Repo, spectral → 2022, SLD → 2013 Taper Tantrum) = the ~0.75 chance rate.
-This elevates the slow-grind [second control](#validated-on-volatility-events-only)
-(roadmap item 7), the one instrument that separates the two explanations, to the
+This elevates the slow-grind [second control](#validated-on-volatility-events-only), the one instrument that separates the two explanations, to the
 critical next step.
 
 ### False-alarm-rate evaluation, Task 4, inconclusive by infeasibility (`python scripts/far_eval.py`)
@@ -502,7 +501,7 @@ python scripts/causal_eval.py              # offline vs. causal |d|
 python scripts/null_model.py               # per-channel floors + control
 python scripts/multi_crisis_panel.py       # 15-crisis panel (headline)
 python scripts/diagnostics.py              # positive controls + bug checks
-python scripts/far_eval.py                 # FAR (roadmap item 4)
+python scripts/far_eval.py                 # FAR (Task 4)
 ```
 
 `scripts/run_demo.py` runs on synthetic data (inflated d-values, smoke test only):
@@ -544,16 +543,16 @@ multi-asset panel runs 14 crises, not 15.
 ## Roadmap
 
 - **v1–v5.5, DONE.** Embedding + 7 channels + SLD; offline evaluation; channel
-  correlation (Open Question 1); causal past-fit preprocessing (Gap 1); null-model
+  correlation (SLD decorrelated, not redundant); causal past-fit preprocessing (Gap 1); null-model
   tests (1 of 28 survives FDR vs. ~1.4 expected); 15-crisis panel (median → count,
   a **power** finding, the evaluation tops out at p = 0.039; H1/H2 VOID); harness
   diagnostics (code correct, statistic was the problem; HMM demoted; 2007 artifact
   flagged); multi-asset panel (null); FAR (inconclusive by infeasibility).
 - **v6, next, power being the binding constraint** (more crises won't help; the
-  count saturates at 15): (i) **second slow-grind control** (item 7), validates
+  count saturates at 15): (i) **second slow-grind control**, validates
   the 12 non-vol crises including 2022; comes first; (ii) **multi-asset widening**:
-  raises how many crises *exist* to detect; (iii) **FAR / expanding-window**
-  (items 4/5), closes Gap 2; (iv) **Bures/MMD baseline** (Task 3.5), the decisive
+  raises how many crises *exist* to detect; (iii) **FAR / expanding-window**,
+  closes Gap 2; (iv) **Bures/MMD baseline** (Task 3.5), the decisive
   test for whether the SLD channel is more than a relabeled classical statistic.
   Pre-registration is deferred to whichever is built.
 
