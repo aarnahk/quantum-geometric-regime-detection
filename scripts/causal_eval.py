@@ -33,10 +33,8 @@ from qgmrd.operators import random_hermitian_operators
 from qgmrd.sld import sld_qfi_time_series
 from qgmrd.zscore import causal_zscore
 
-# (name, start_month, end_month) from the shared registry. Windows are Hammond
-# Table G.10 extended by +/-10 trading days -- see qgmrd/crises.py. These three
-# are the crises Task 2 and the null models were built on; the full 15-crisis
-# panel lives in scripts/multi_crisis_panel.py and uses the same registry.
+# (name, start_month, end_month) from qgmrd/crises.py (G.10 +/-10). These three
+# are the Task 2 / null-model crises; the full 15 live in multi_crisis_panel.py.
 CRISES = [crisis_get(name) for name in LEGACY_THREE]
 
 N = 8
@@ -62,12 +60,8 @@ def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
 
 def raw_channels(Xp: np.ndarray, ops: np.ndarray, returns: np.ndarray,
                  hmm_fit: np.ndarray) -> dict[str, np.ndarray]:
-    """All seven raw (pre-z-score) channel series from an embedding Xp.
-
-    ``hmm_fit`` is a boolean mask selecting the rows the HMM may fit on. For
-    the offline column it is all-True; for a causal column it is the pre-cutoff
-    rows only. The HMM is fit on that slice, then predicts over the full series.
-    """
+    """All seven raw (pre-z-score) channel series from embedding Xp. ``hmm_fit`` is the
+    boolean mask of rows the HMM may fit on (all rows offline; pre-cutoff for causal)."""
     T = Xp.shape[0]
     se = np.empty(T)
     rp = np.empty(T)
@@ -88,13 +82,8 @@ def raw_channels(Xp: np.ndarray, ops: np.ndarray, returns: np.ndarray,
 
 
 def hmm_high_variance_prob_causal(returns: np.ndarray, fit_mask: np.ndarray) -> np.ndarray:
-    """HMM high-variance posterior, fit ONLY on returns[fit_mask].
-
-    Reuses the module baseline when the mask is all rows (offline); otherwise
-    fits on the pre-cutoff slice and predicts over the full series, matching
-    the scaler/PCA causal treatment so the baseline column is not secretly
-    global.
-    """
+    """HMM high-variance posterior, fit only on returns[fit_mask] (pre-cutoff for causal),
+    predicting over the full series."""
     r = np.nan_to_num(np.asarray(returns, dtype=float))
     if fit_mask.all():
         return hmm_high_variance_prob(r)
@@ -190,11 +179,8 @@ def main() -> None:
 
         div = fit_divergence(scaler, pca, sc, pc)
 
-        # Does the preprocessing divergence survive into the embedding? The L2
-        # normalize() after PCA projects each row onto the unit sphere, which
-        # can absorb scale differences. Signed row-wise cosine (NOT abs: a PCA
-        # sign flip changes H(x) physically, so it is a real difference) is the
-        # direct test of whether the two embeddings agree where channels read.
+        # signed row-wise cosine of the two embeddings (NOT abs: a PCA sign flip
+        # changes H(x) physically, so it is a real difference).
         row_cos = np.sum(Xp_offline * Xp_causal, axis=1)  # both rows unit-norm
 
         print(f"\n### {name}  ({window}: {ctx['start'].date()} -> "
@@ -213,11 +199,8 @@ def main() -> None:
               f"mean={row_cos.mean():.4f}, min={row_cos.min():.4f}, "
               f"frac<0.99={float((row_cos < 0.99).mean()):.3f}")
 
-        # Does the embedding perturbation reach the z-scored channel SERIES, or
-        # only the daily embedding? Two very different conclusions if |d| barely
-        # moves: high series-corr => channels are robust to the perturbation;
-        # low series-corr with matching |d| => Cohen's d is too coarse to see
-        # series-level change, a caveat on the metric itself (every repo number).
+        # channel-series correlation (offline vs causal): whether the perturbation
+        # reaches the z-scored series or only the daily embedding.
         series_corr = {}
         for ch in off_d:
             a, b = offline[ch], causal[ch]

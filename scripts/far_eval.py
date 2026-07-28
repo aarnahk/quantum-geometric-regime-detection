@@ -43,15 +43,11 @@ CONTROL = "realized_vol_20d"  # positive control; reported, never in the FDR fam
 FIRST_CRISIS = "2007 Quant Meltdown"   # defines the calibration cutoff
 FDR_ALPHA = 0.05
 
-# 5-year calendar eras, fixed a priori on the decade grid (Sec. 7-iii). Edges
-# chosen with NO reference to any realized-FAR value -> no gerrymandered bins.
+# 5-year calendar eras, fixed a priori on the decade grid.
 ERA_EDGES = [2005, 2010, 2015, 2020, 2025, 2027]
 
 
-# --------------------------------------------------------------------------
-# Alarm primitives. An alarm is an UPCROSSING (below-or-NaN -> above tau); a
-# detector sitting above tau is ONE alarm until it drops back below.
-# --------------------------------------------------------------------------
+# Alarm = an upcrossing (below/NaN -> above tau); one alarm until it drops back.
 
 def above_tau(z: np.ndarray, tau: float) -> np.ndarray:
     """Boolean 'firing' mask; NaN (warm-up) counts as not firing."""
@@ -62,11 +58,7 @@ def above_tau(z: np.ndarray, tau: float) -> np.ndarray:
 
 
 def upcross_indices(above: np.ndarray) -> np.ndarray:
-    """Indices where the detector crosses from not-firing to firing.
-
-    Position 0 counts as an upcrossing if it starts already firing (an alarm
-    active at the very first evaluated day).
-    """
+    """Indices where `above` goes False->True (index 0 counts if it starts True)."""
     prev = np.concatenate([[False], above[:-1]])
     return np.flatnonzero(above & ~prev)
 
@@ -77,20 +69,11 @@ def event_far(z_segment: np.ndarray, tau: float, n_eval_days: int) -> float:
     return n_up / (n_eval_days / TRADING_YEAR) if n_eval_days > 0 else np.nan
 
 
-# --------------------------------------------------------------------------
-# Calibrate-and-freeze. tau is chosen ONLY from the block's calm z-values so the
-# block alarm-event rate is as close to the target as integer-event granularity
-# allows (Sec. 4). Monotone: higher tau -> fewer upcrossings.
-# --------------------------------------------------------------------------
+# Calibrate tau on the block's calm z-values; higher tau -> fewer upcrossings.
 
 def calibrate_tau(z_block: np.ndarray, target_far: float) -> tuple[float, float, int]:
-    """Return (tau, achieved_block_far, target_count) for one channel.
-
-    ``z_block`` is the block portion of the channel's causal z-series (calm by
-    construction). Candidates are the block's own finite z-values; we pick the
-    tau whose block upcrossing count is closest to target_far * block_years,
-    breaking ties toward the HIGHER tau (fewer alarms -- the conservative side).
-    """
+    """(tau, achieved_block_far, target_count): tau from the block's z-values whose
+    upcrossing count is closest to target_far*block_years (ties -> higher tau)."""
     finite = z_block[~np.isnan(z_block)]
     n_eval = finite.size
     block_years = n_eval / TRADING_YEAR
@@ -112,13 +95,8 @@ def calibrate_tau(z_block: np.ndarray, target_far: float) -> tuple[float, float,
 
 def detect_and_delay(above: np.ndarray, masks: list[np.ndarray],
                      starts: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Per crisis: detected?, delay (trading days), early? (carried in at onset).
-
-    Detected = the detector fires on ANY day inside the window. Delay = first
-    in-window firing day minus window start. ``early`` marks windows already
-    firing at their first day (alarm carried from the shoulder) -- reported, not
-    counted as a false alarm.
-    """
+    """Per crisis: (detected, delay, early). Detected = fires on any in-window day;
+    delay = first in-window firing minus window start; early = firing at window start."""
     K = len(masks)
     det = np.zeros(K, dtype=bool)
     delay = np.full(K, np.nan)
@@ -134,15 +112,8 @@ def detect_and_delay(above: np.ndarray, masks: list[np.ndarray],
 
 
 def chance_floor(above: np.ndarray, masks: list[np.ndarray]) -> np.ndarray:
-    """Null distribution of the detection COUNT under all circular shifts.
-
-    Slides the firing series under the FIXED crisis masks by every offset
-    1..M-1 (deterministic, full enumeration -- the conservative null (b) of the
-    panel). Each shift preserves the firing autocorrelation exactly (up to one
-    seam) while destroying alignment to the crisis dates, so the distribution of
-    "how many windows contain a firing day by chance" IS the floor -- and it
-    inherits this channel's persistence, which is the per-channel asymmetry.
-    """
+    """Null distribution of the detection count over all circular shifts 1..M-1
+    (masks fixed); inherits the channel's own persistence."""
     M = above.size
     shifts = np.arange(1, M)
     pos = above.astype(bool)
@@ -171,7 +142,7 @@ def main() -> None:
     rv = realized_vol_series(prices["SPY"]).reindex(idx).values
     p = min(8, features.shape[1])
 
-    # ---- calibration block: index < 2007 cutoff (Sec. 3.1) --------------
+    # ---- calibration block: index < 2007 cutoff --------------
     ctx0 = crisis_context(idx, *_first_crisis_months())
     cutoff = ctx0["cutoff"]
     block = np.asarray(idx < cutoff)             # calibration rows
@@ -192,7 +163,7 @@ def main() -> None:
     print(f"deployed forward  : {idx[forward][0].date()} -> {idx[forward][-1].date()} "
           f"({int(forward.sum())} rows)")
 
-    # ---- (i) CAUSALITY AUDIT (Sec. 7-i) ---------------------------------
+    # ---- (i) causality audit ---------------------------------
     fit_rows = np.flatnonzero(block)
     n_crisis_in_block = int(any_crisis[block].sum())
     forward_in_fit = int((forward & block).sum())
@@ -206,7 +177,7 @@ def main() -> None:
     print(f"    forward days inside the fit set ........ {forward_in_fit}  "
           f"[{'PASS' if forward_in_fit == 0 else 'FAIL'}]")
 
-    # ---- frozen embedding: fit on block, transform full (Sec. 3) --------
+    # ---- frozen embedding: fit on block, transform full --------
     sc = StandardScaler().fit(features.values[block])
     pc = PCA(n_components=p, random_state=SEED).fit(sc.transform(features.values[block]))
     Xp = normalize(pc.transform(sc.transform(features.values)))
@@ -269,17 +240,13 @@ def main() -> None:
         pval = (1 + int(np.sum(null_counts >= det_count))) / (1 + null_counts.size)
         tau_ac = integrated_autocorr_time(z[forward])[0]
 
-        # dynamic-range / transfer diagnostic: the block's causal-z range vs the
-        # deployed range, and the forward FAR the highest admissible (block-max)
-        # threshold would still give -- this is what shows deploy-once cannot set
-        # the operating point (FAR_PREREGISTRATION Sec. 10).
+        # dynamic-range / transfer: block z-range vs deployed z-range.
         blk_zmax = float(np.nanmax(z[block]))
         fwd_zmax = float(np.nanmax(z[forward]))
         up_bmax = upcross_indices(above_tau(z, blk_zmax))
         far_at_bmax = int(calm_fwd[up_bmax].sum()) / (n_calm / TRADING_YEAR)
 
-        # fixed-line separation: does the detector cross tau MORE during crises
-        # than during calm? (the informative residue -- Sec. 10)
+        # fixed-line separation: crisis vs calm exceedance rate at tau.
         crisis_exc = 100.0 * above[forward & any_crisis].mean()
         calm_exc = 100.0 * above[calm_fwd].mean()
 
@@ -291,7 +258,7 @@ def main() -> None:
                            fwd_zmax=fwd_zmax, far_at_bmax=far_at_bmax,
                            crisis_exc=crisis_exc, calm_exc=calm_exc)
 
-    # chance floor summary (reported BEFORE the channel numbers, Sec. 6)
+    # chance floor summary
     print("\nCHANCE FLOOR (pure-noise expectation, mean of the shift-null count):")
     for ch in channels:
         r = results[ch]
@@ -327,7 +294,7 @@ def main() -> None:
             line += "   [early: " + ", ".join(e) + "]"
         print(f"  {ch:<20}{line}{tag}")
 
-    # ---- DYNAMIC RANGE / TRANSFER (why deploy-once is infeasible) --------
+    # ---- dynamic range / transfer --------
     print("\n" + "=" * 100)
     print("DYNAMIC RANGE / TRANSFER -- block causal-z range vs the deployed range")
     print("=" * 100)
@@ -339,7 +306,7 @@ def main() -> None:
         print(f"{ch:<20}{r['blk_zmax']:>9.2f}{r['fwd_zmax']:>9.2f}"
               f"{r['calm_far']:>12.2f}{r['far_at_bmax']:>13.2f}{tag}")
 
-    # ---- FIXED-LINE SEPARATION (the informative residue) ----------------
+    # ---- fixed-line separation ----------------
     print("\n" + "=" * 100)
     print("FIXED-LINE SEPARATION -- crisis-vs-calm exceedance ratio at a fixed tau")
     print("=" * 100)
@@ -353,7 +320,7 @@ def main() -> None:
         print(f"{ch:<20}{r['tau']:>8.2f}{r['crisis_exc']:>12.1f}"
               f"{r['calm_exc']:>11.1f}{rs:>9}{tag}")
 
-    # ---- (ii) IN-SAMPLE BLOCK FAR CHECK (Sec. 7-ii) ---------------------
+    # ---- (ii) in-sample block FAR check ---------------------
     print("\n" + "=" * 100)
     print("(ii) IN-SAMPLE CHECK -- block FAR must ~ target by construction")
     print("=" * 100)
@@ -363,7 +330,7 @@ def main() -> None:
         print(f"  {ch:<20} block FAR {r['block_far']:>5.2f}/yr  "
               f"(target {TARGET_FAR:.1f}, {r['target_count']} events)  [{ok}]")
 
-    # ---- (iii) FORWARD CALM FAR BY ERA (Sec. 7-iii) ---------------------
+    # ---- (iii) forward calm FAR by era ---------------------
     print("\n" + "=" * 100)
     print("(iii) FORWARD CALM FAR BY 5-YEAR ERA -- the deploy-once drift diagnostic")
     print("=" * 100)
@@ -389,7 +356,7 @@ def main() -> None:
         tag = " C" if ch == CONTROL else ""
         print(f"{ch:<20}" + "".join(cells) + tag)
 
-    # ---- BH-FDR over the 7-detector family (Sec. 6, unconditional) ------
+    # ---- BH-FDR over the 7-detector family ------
     print("\n" + "=" * 100)
     print("BH-FDR over the 7-detector family (6 geometric + HMM), control EXCLUDED.")
     print(f"Expected chance survivors at alpha={FDR_ALPHA}: {len(tested) * FDR_ALPHA:.2f}.")

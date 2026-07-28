@@ -43,16 +43,8 @@ CONTROL = "realized_vol_20d"  # positive control; reported, NOT in the FDR famil
 
 
 def causal_channels_for_crisis(features, ops, returns, ctx, rv=None):
-    """Causal (past-fit) z-scored channels for one crisis, plus the control.
-
-    Fits scaler + PCA on rows strictly before the crisis context's cutoff only,
-    transforms the full timeline through them (same protocol as causal_eval),
-    and returns the seven causal z-scored channel series.
-
-    ``rv`` is the raw realized-vol control series. It is appended as an eighth
-    channel and z-scored identically, but it is NOT part of the FDR family --
-    it exists to answer whether this test can detect anything at all.
-    """
+    """Seven causal (past-fit) z-scored channels for one crisis, plus the realized-vol
+    control as an eighth series (z-scored identically, not in the FDR family)."""
     pre = ctx["pre"]
     p = min(8, features.shape[1])
     sc = StandardScaler().fit(features.values[pre])
@@ -65,14 +57,8 @@ def causal_channels_for_crisis(features, ops, returns, ctx, rv=None):
 
 
 def integrated_autocorr_time(x: np.ndarray) -> tuple[float, float]:
-    """(tau_int, N_eff) via Geyer's initial-positive-sequence estimator.
-
-    tau_int = 1 + 2 * sum_{l>=1} rho(l), truncated at the first non-positive
-    autocorrelation (the standard guard against summing noise in the tail).
-    N_eff = M / tau_int is how many effectively-independent samples the M
-    circular shifts are worth -- adjacent shifts of an autocorrelated series
-    are near-duplicates, so the raw shift count overstates resolution.
-    """
+    """(tau_int, N_eff) via Geyer's initial-positive-sequence estimator:
+    tau_int = 1 + 2*sum_{l>=1} rho(l) truncated at the first non-positive rho; N_eff = M/tau_int."""
     x = np.asarray(x, dtype=float)
     x = x[~np.isnan(x)]
     n = len(x)
@@ -92,13 +78,8 @@ def integrated_autocorr_time(x: np.ndarray) -> tuple[float, float]:
 
 
 def run_nulls(z: np.ndarray, crisis_mask: np.ndarray, n_draws: int, seed: int) -> dict:
-    """Both nulls for one channel on one crisis window.
-
-    Operates on the finite sub-series (leading causal-warmup NaNs removed) so
-    the circular shift preserves the exact marginal. The crisis window is a
-    contiguous, fully-finite block there, so its non-NaN length L is the
-    matched length for the random-window null.
-    """
+    """Both nulls for one channel on one crisis window, on the finite sub-series
+    (warm-up NaNs removed) so the circular shift preserves the exact marginal."""
     z = np.asarray(z, dtype=float)
     finite = ~np.isnan(z)
     zf = z[finite]
@@ -216,8 +197,7 @@ def main() -> None:
                   f"{r['b_med']:>8.2f}{r['b_pct']:>8.1f}{r['b_p']:>9.4f}"
                   f"{r['tau']:>7.1f}{r['n_eff']:>7.0f}")
 
-            # The control is reported but NEVER enters the FDR family -- it is
-            # not a hypothesis under test, it is the instrument check.
+            # control is reported but never in the FDR family (instrument check).
             if name in PRIMARY_CRISES and ch != CONTROL:
                 primary_p.extend([r["a_p"], r["b_p"]])
                 primary_key.extend([f"{name}/{ch}/(a)", f"{name}/{ch}/(b)"])

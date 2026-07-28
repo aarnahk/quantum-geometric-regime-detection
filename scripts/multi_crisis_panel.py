@@ -94,9 +94,8 @@ def panel_null_tests(Z: np.ndarray, masks: np.ndarray,
     finite-trimmed series, so both nulls reduce to window placement and run off
     the same prefix sums.
 
-    (a) random matched-length windows, drawn per crisis INDEPENDENTLY;
+    (a) random matched-length windows, per crisis INDEPENDENTLY (anti-conservative);
     (b) one COMMON circular shift applied to all K series at once.
-    See the module docstring for why (a) is anti-conservative and (b) is not.
     """
     K, M_len = Z.shape
     pre = [_prefix_sums(Z[k]) for k in range(K)]
@@ -147,20 +146,12 @@ def panel_null_tests(Z: np.ndarray, masks: np.ndarray,
 
 def count_statistic(real_per_crisis: np.ndarray, draws: np.ndarray,
                     pct: float = 95.0) -> dict:
-    """How many crises does a channel clear ITS OWN per-crisis floor in?
+    """How many crises a channel clears its own per-crisis floor in.
 
-    ``draws`` is (K, n) of null |d| for each crisis from ONE null family; the
-    threshold and the null distribution of the count both come from it, so the
-    test stays self-consistent within a family.
-
-    This is the headline statistic. Unlike the median it is sensitive to a
-    SPARSE alternative -- an effect present in a few crises and absent in the
-    rest -- which is what the positive control showed this panel actually has.
-
-    Integer-coarse by construction: under binomial(15, 0.05) the attainable
-    p-values are 0.171 (2 hits), 0.036 (3), 0.0055 (4), 0.00065 (5). There is
-    nothing between them, and that resolution limit is the reason no
-    confirmatory claim is reachable here (see module docstring).
+    ``draws`` is (K, n) of null |d| per crisis from ONE null family; both the
+    threshold and the null distribution of the count come from it (self-consistent).
+    Integer-coarse: under binomial(15, 0.05) attainable p are 0.171 (2), 0.036 (3),
+    0.0055 (4), 0.00065 (5).
     """
     thresh = np.percentile(draws, pct, axis=1)
     count = int(np.sum(real_per_crisis > thresh))
