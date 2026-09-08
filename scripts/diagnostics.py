@@ -34,7 +34,13 @@ from multi_crisis_panel import (  # noqa: E402
     align_panel,
     panel_null_tests,
 )
-from null_model import bh_fdr  # noqa: E402
+from null_model import (  # noqa: E402
+    N_WINDOW_DRAWS,
+    bh_fdr,
+    causal_channels_for_crisis,
+    run_nulls,
+)
+from qgmrd.baseline import drawdown_series, trailing_return_series  # noqa: E402
 from qgmrd.crises import CRISIS_WINDOWS, MIN_PRECUTOFF_ROWS  # noqa: E402
 from qgmrd.crises import context as crisis_context  # noqa: E402
 from qgmrd.data import load_prices, synthetic_prices  # noqa: E402
@@ -44,9 +50,14 @@ from qgmrd.zscore import causal_zscore  # noqa: E402
 
 ZS_W, ZS_M = 20, 60          # causal_zscore defaults (paper Algorithm 1)
 RV_WINDOW = 20               # realized-vol lookback, matches the vol20 feature
+DD_WINDOW = 252               # drawdown lookback, matches baseline.drawdown_series default
+TR_WINDOW = 126               # trailing-return lookback, matches null_model.py's CONTROL3
 W_ABLATION = (1, 5, 10, 20)
 SHIFT_GRID = tuple(range(-60, 61, 10))
 SATURATION_EPS = 0.01        # posterior within this of 0 or 1 counts as pinned
+TREND_MATCH_DRAWS = 5000
+TREND_MATCH_FRAC = 0.5       # null pool: closest half of candidates by decline size
+SWEEP_MULTS = (0.5, 1.0, 2.0, 3.0, 5.0, 8.0)   # x the real 2022 decline
 
 RULE = "=" * 100
 
@@ -121,6 +132,8 @@ def build_panel(features, prices, ops, idx, label="real"):
     returns = np.log(prices["SPY"]).diff().reindex(idx).values
     rv = (np.log(prices["SPY"]).diff().rolling(RV_WINDOW).std()
           .reindex(idx).values)
+    dd = drawdown_series(prices["SPY"], window=DD_WINDOW).reindex(idx).values
+    tr = trailing_return_series(prices["SPY"], window=TR_WINDOW).reindex(idx).values
     p = min(8, features.shape[1])
     out = []
     for name, sm, em in CRISIS_WINDOWS:
@@ -138,6 +151,8 @@ def build_panel(features, prices, ops, idx, label="real"):
             "production path -- the diagnostic would not be measuring the "
             "same computation")
         raw["realized_vol_20d"] = rv
+        raw["drawdown_252d"] = dd
+        raw["trailing_return_126d"] = tr
         out.append({"name": name, "ctx": ctx, "raw": raw, "hmm": hmm})
         print(f"  built {label}/{name:<22} ({ctx['n_window']:>3}d window, "
               f"{ctx['n_pre']:>4} pre-cutoff rows)")
@@ -208,6 +223,71 @@ def synthetic_on_calendar(idx_prices, masks_union, seed=11):
     return pd.DataFrame(px, columns=["SPY", "DIA"], index=idx_prices)
 
 
+def trend_matched_null(z, ret, crisis_mask, n_draws=TREND_MATCH_DRAWS,
+                       seed=SEED, frac=TREND_MATCH_FRAC):
+    """Null (c): draw matched-length windows from the closest ``frac`` of
+    candidates by cumulative-return magnitude to the crisis window's own.
+
+    Tests "is this decline unusual among OTHER comparably-sized declines",
+    not "unusual among any random period" -- the persistence in null (a)/(b)
+    inflates the floor because ordinary declines aren't rare; conditioning on
+    decline size removes that inflation if it's the actual cause.
+    """
+    z, ret = np.asarray(z, dtype=float), np.asarray(ret, dtype=float)
+    finite = ~np.isnan(z)
+    zf, rf = z[finite], ret[finite]
+    mf = np.asarray(crisis_mask, dtype=bool)[finite]
+    M = len(zf)
+    pos = np.where(mf)[0]
+    lo, hi, L = int(pos.min()), int(pos.max()), int(mf.sum())
+
+    real = abs(cohens_d(zf[mf], zf[~mf]))
+    m_crisis = -float(np.nansum(rf[mf]))   # decline size; + = decline
+
+    starts = np.array([s for s in range(0, M - L + 1)
+                       if (s + L - 1 < lo) or (s > hi)], dtype=int)
+    m_cand = np.array([-float(np.nansum(rf[s : s + L])) for s in starts])
+    order = np.argsort(np.abs(m_cand - m_crisis))
+    keep = starts[order[: max(1, int(round(len(starts) * frac)))]]
+
+    rng = np.random.default_rng(seed)
+    chosen = rng.choice(keep, size=n_draws, replace=True)
+    d = np.empty(n_draws)
+    for i, s in enumerate(chosen):
+        m = np.zeros(M, dtype=bool)
+        m[s : s + L] = True
+        d[i] = abs(cohens_d(zf[m], zf[~m]))
+
+    return {
+        "real": real, "m_crisis": m_crisis, "pool": len(keep),
+        "pool_total": len(starts),
+        "null_med": float(np.median(d)), "null_95": float(np.percentile(d, 95)),
+        "pct": float((d < real).mean() * 100.0),
+        "p": (1 + int(np.sum(d >= real))) / (1 + n_draws),
+    }
+
+
+def synthetic_grind_on_calendar(idx_prices, masks_union, seed=17, drift=-0.0020):
+    """Like ``synthetic_on_calendar`` but drift-ONLY: vol and corr untouched.
+
+    Isolates the slow-grind profile (2022: |d|=0.53 on vol, unremarkable) from
+    the vol-spike profile the other synthetic already covers. Default drift
+    matches ``synthetic_on_calendar``'s ``cri_drift`` -- known ground truth.
+    If nothing detects this, the ceiling is the harness, not the market.
+    """
+    rng = np.random.default_rng(seed)
+    T = len(idx_prices)
+    base_vol, base_corr, base_drift = 0.008, 0.30, 0.0003
+
+    drift = np.where(masks_union, drift, base_drift)
+    z = rng.standard_normal((T, 2))
+    r0 = z[:, 0]
+    r1 = base_corr * z[:, 0] + np.sqrt(1 - base_corr ** 2) * z[:, 1]
+    rets = np.column_stack([drift + base_vol * r0, drift + base_vol * r1])
+    px = 100.0 * np.exp(np.cumsum(rets, axis=0))
+    return pd.DataFrame(px, columns=["SPY", "DIA"], index=idx_prices)
+
+
 # --------------------------------------------------------------------------
 
 def main() -> None:
@@ -243,16 +323,25 @@ def main() -> None:
     Zs, Ms = align_panel(panel, channels)
     results = {ch: panel_null_tests(Zs[ch], Ms[ch]) for ch in channels}
     report_null_table(results, channels,
-                      "Panel medians, 7 channels + realized-vol control:",
-                      highlight=("realized_vol_20d",))
+                      "Panel medians, 7 channels + 3 controls:",
+                      highlight=("realized_vol_20d", "drawdown_252d", "trailing_return_126d"))
 
-    rv = results["realized_vol_20d"]
+    rv, dd, tr = (results["realized_vol_20d"], results["drawdown_252d"],
+                 results["trailing_return_126d"])
     print(f"\nrealized vol per-crisis |d|: "
           + ", ".join(f"{panel[k]['name'].split()[0]}={rv['real_per_crisis'][k]:.2f}"
                       for k in range(K)))
-    for key, nm in (("2020 COVID", "COVID"), ("2008 GFC", "GFC")):
+    print(f"drawdown per-crisis |d|: "
+          + ", ".join(f"{panel[k]['name'].split()[0]}={dd['real_per_crisis'][k]:.2f}"
+                      for k in range(K)))
+    print(f"trailing return per-crisis |d|: "
+          + ", ".join(f"{panel[k]['name'].split()[0]}={tr['real_per_crisis'][k]:.2f}"
+                      for k in range(K)))
+    for key, nm in (("2020 COVID", "COVID"), ("2008 GFC", "GFC"), ("2022 Rate Hikes", "2022")):
         k = [i for i, c in enumerate(panel) if c["name"] == key][0]
-        print(f"  {nm:<6} realized-vol |d| = {rv['real_per_crisis'][k]:.2f}")
+        print(f"  {nm:<6} realized-vol |d| = {rv['real_per_crisis'][k]:.2f}"
+              f"  drawdown |d| = {dd['real_per_crisis'][k]:.2f}"
+              f"  trailing return |d| = {tr['real_per_crisis'][k]:.2f}")
 
     # ======================================================================
     head("1b", "What panel statistic WOULD have found the control?")
@@ -301,7 +390,7 @@ def main() -> None:
     syn_results = {ch: panel_null_tests(sZ[ch], sM[ch]) for ch in channels}
     report_null_table(syn_results, channels,
                       "SYNTHETIC panel medians (ground truth: crisis IS there):",
-                      highlight=("realized_vol_20d",))
+                      highlight=("realized_vol_20d", "drawdown_252d", "trailing_return_126d"))
 
     print("\nSingle-crisis synthetic (qgmrd.data.synthetic_prices, injected "
           "rows 1000-1120):")
@@ -316,6 +405,9 @@ def main() -> None:
     s_raw = raw_channels(s_Xp, ops, s_ret, hmm_fit=np.ones(len(sf), dtype=bool))
     s_raw["realized_vol_20d"] = (np.log(sp["SPY"]).diff()
                                  .rolling(RV_WINDOW).std().reindex(sf.index).values)
+    s_raw["drawdown_252d"] = drawdown_series(sp["SPY"], window=DD_WINDOW).reindex(sf.index).values
+    s_raw["trailing_return_126d"] = trailing_return_series(
+        sp["SPY"], window=TR_WINDOW).reindex(sf.index).values
     print(f"{'channel':<20}{'|d|':>8}")
     print("-" * 28)
     for ch in sorted(s_raw, key=lambda c: -abs(cohens_d(
@@ -323,6 +415,97 @@ def main() -> None:
             fast_causal_zscore(s_raw[c])[~s_mask]))):
         z = fast_causal_zscore(s_raw[ch])
         print(f"{ch:<20}{abs(cohens_d(z[s_mask], z[~s_mask])):>8.2f}")
+
+    # ======================================================================
+    head("2b", "PURE-DRIFT synthetic: decline only, vol/corr untouched")
+    print("\nSame drift as TEST 2, injected alone -- isolates 2022's profile "
+          "(decline, unremarkable vol) from TEST 2's vol-spike synthetic.")
+    grind_prices = synthetic_grind_on_calendar(prices.index, masks_union_prices)
+    grind_features = build_features(grind_prices)
+    grind_idx = grind_features.index
+    grind_raw = build_panel(grind_features, grind_prices, ops, grind_idx, label="grind")
+    grind_panel = zscore_panel(grind_raw, w=ZS_W)
+    gZ, gM = align_panel(grind_panel, channels)
+    grind_results = {ch: panel_null_tests(gZ[ch], gM[ch]) for ch in channels}
+    report_null_table(grind_results, channels,
+                      "PURE-DRIFT SYNTHETIC panel medians (ground truth: decline IS there):",
+                      highlight=("realized_vol_20d", "drawdown_252d", "trailing_return_126d"))
+
+    # ======================================================================
+    head("2c", "Trend-matched null: does drawdown beat OTHER declines?")
+    print(f"\nNull (c): candidates restricted to the closest {TREND_MATCH_FRAC:.0%} "
+          "by decline size, not anywhere in the series -- tests the "
+          "persistence-inflation diagnosis directly.")
+
+    def _trim_ret(panel_list, ch, ret_full):
+        finite = np.ones(len(panel_list[0]["z"][ch]), dtype=bool)
+        for c in panel_list:
+            finite &= ~np.isnan(c["z"][ch])
+        return ret_full[finite]
+
+    real_returns = np.log(prices["SPY"]).diff().reindex(idx).values
+    grind_returns = np.log(grind_prices["SPY"]).diff().reindex(grind_idx).values
+
+    for label, pl, Zd, Md, ret_full, res in (
+        ("REAL", panel, Zs, Ms, real_returns, results),
+        ("SYNTHETIC, ground truth known", grind_panel, gZ, gM, grind_returns, grind_results),
+    ):
+        print(f"\n[{label}]")
+        for ch in ("drawdown_252d", "trailing_return_126d", "ground_energy_E0"):
+            ret_trim = _trim_ret(pl, ch, ret_full)
+            floor95 = np.percentile(res[ch]["draws_a"], 95, axis=1)
+            n_old = n_new = 0
+            print(f"\n  {ch}")
+            print(f"    {'crisis':<22}{'|d|':>7}{'old(a)':>8}{'new(c)p':>9}"
+                  f"{'pool':>7}  old->new")
+            for k, c in enumerate(pl):
+                tm = trend_matched_null(Zd[ch][k], ret_trim, Md[ch][k])
+                old = res[ch]["real_per_crisis"][k] > floor95[k]
+                new = tm["p"] < 0.05
+                n_old, n_new = n_old + int(old), n_new + int(new)
+                print(f"    {c['name']:<22}{tm['real']:>7.2f}"
+                      f"{('YES' if old else 'no'):>8}{tm['p']:>9.4f}"
+                      f"{tm['pool']:>7}  {'YES' if old else 'no'} -> "
+                      f"{'YES' if new else 'no'}")
+            print(f"    clears: old(a) {n_old}/{len(pl)}   new(c) {n_new}/{len(pl)}")
+
+    # ======================================================================
+    head("2d", "Magnitude sweep: how big a decline would 2022 need to be?")
+    ctx22 = crisis_context(idx, "2022-01", "2022-10")
+    L22 = int(ctx22["mask"].sum())
+    real_2022_logret = float(np.nansum(real_returns[ctx22["mask"]]))
+    base_drift_22 = real_2022_logret / L22
+    mask22_prices = np.isin(prices.index, idx[ctx22["mask"]])
+    print(f"\nReal 2022 window: {L22}d, total log-return {real_2022_logret:.3f} "
+          f"({(np.exp(real_2022_logret) - 1) * 100:.1f}%), "
+          f"drift/day = {base_drift_22:.5f}.")
+    print("Decline confined to 2022's window only, vol/corr at baseline; "
+          "sweep = x the real drift.\n")
+    print(f"{'x real':>7}{'decline%':>10}{'ch':<18}{'|d|':>7}{'(a)p':>9}"
+          f"{'(c)p':>9}  clears(a)  clears(c)")
+    print("-" * 78)
+    for mult in SWEEP_MULTS:
+        drift = base_drift_22 * mult
+        pct = (np.exp(drift * L22) - 1) * 100
+        sp = synthetic_grind_on_calendar(prices.index, mask22_prices,
+                                         seed=19, drift=drift)
+        sf = build_features(sp)
+        sidx = sf.index
+        sctx = crisis_context(sidx, "2022-01", "2022-10")
+        sret = np.log(sp["SPY"]).diff().reindex(sidx).values
+        srv = (np.log(sp["SPY"]).diff().rolling(RV_WINDOW).std()
+              .reindex(sidx).values)
+        sdd = drawdown_series(sp["SPY"], window=DD_WINDOW).reindex(sidx).values
+        str_ = trailing_return_series(sp["SPY"], window=TR_WINDOW).reindex(sidx).values
+        sz = causal_channels_for_crisis(sf, ops, sret, sctx, rv=srv, dd=sdd, tr=str_)
+        for ch in ("drawdown_252d", "trailing_return_126d", "ground_energy_E0",
+                  "realized_vol_20d"):
+            na = run_nulls(sz[ch], sctx["mask"], N_WINDOW_DRAWS, SEED)
+            nc = trend_matched_null(sz[ch], sret, sctx["mask"])
+            print(f"{mult:>7.1f}{pct:>9.1f}%{ch:<18}{na['real']:>7.2f}"
+                  f"{na['a_p']:>9.4f}{nc['p']:>9.4f}  "
+                  f"{'YES' if na['a_p'] < 0.05 else 'no':<9}  "
+                  f"{'YES' if nc['p'] < 0.05 else 'no'}")
 
     # ======================================================================
     head(3, "HMM convergence and posterior saturation")

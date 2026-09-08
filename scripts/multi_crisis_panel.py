@@ -32,7 +32,11 @@ from causal_eval import (  # noqa: E402  (shared pipeline pieces)
     zscored,
 )
 from null_model import bh_fdr, integrated_autocorr_time  # noqa: E402
-from qgmrd.baseline import realized_vol_series  # noqa: E402
+from qgmrd.baseline import (  # noqa: E402
+    drawdown_series,
+    realized_vol_series,
+    trailing_return_series,
+)
 from qgmrd.crises import CRISIS_WINDOWS, MIN_PRECUTOFF_ROWS  # noqa: E402
 from qgmrd.crises import context as crisis_context  # noqa: E402
 from qgmrd.data import load_prices  # noqa: E402
@@ -43,7 +47,10 @@ N_WINDOW_DRAWS = 5000     # null (a) panel medians
 N_BOOT = 2000             # block-bootstrap replicates
 FDR_ALPHA = 0.05
 HMM_BLIND_THRESHOLD = 0.2  # control-sanity flag; flagged, never dropped
-CONTROL = "realized_vol_20d"   # positive control; reported, never in the family
+CONTROL = "realized_vol_20d"    # primary control (vol crises); never in the family
+CONTROL2 = "drawdown_252d"      # second control (slow-grind crises, fails); never in the family
+CONTROL3 = "trailing_return_126d"  # third control (slow-grind crises); never in the family
+CONTROLS = (CONTROL, CONTROL2, CONTROL3)
 COUNT_PCT = 95.0               # per-crisis threshold percentile for the count
 MIN_BOOT_CRISIS_DAYS = 10  # a crisis contributes to a replicate only above this
 
@@ -335,10 +342,13 @@ def main() -> None:
     ops = random_hermitian_operators(min(8, features.shape[1]), n=N, seed=SEED)
     returns = np.log(prices["SPY"]).diff().reindex(idx).values
     rv = realized_vol_series(prices["SPY"]).reindex(idx).values
+    dd = drawdown_series(prices["SPY"]).reindex(idx).values
+    tr = trailing_return_series(prices["SPY"], window=126).reindex(idx).values
     p = min(8, features.shape[1])
 
     print("\n" + "=" * 100)
-    print("MULTI-CRISIS PANEL -- 15 crises, 7 channels + realized-vol CONTROL")
+    print("MULTI-CRISIS PANEL -- 15 crises, 7 channels + 3 CONTROLS "
+          "(realized vol, drawdown, trailing return)")
     print("=" * 100)
 
     # ---- per-crisis causal channels -------------------------------------
@@ -356,6 +366,8 @@ def main() -> None:
         Xp = normalize(pc.transform(sc.transform(features.values)))
         raw = raw_channels(Xp, ops, returns, hmm_fit=pre)
         raw[CONTROL] = rv          # needs no fitting; same series every crisis
+        raw[CONTROL2] = dd         # needs no fitting; same series every crisis
+        raw[CONTROL3] = tr         # needs no fitting; same series every crisis
         causal = zscored(raw)
         panel.append({"name": name, "ctx": ctx, "z": causal})
         print(f"  fitted {name:<22} window {ctx['start'].date()} -> "
@@ -370,10 +382,10 @@ def main() -> None:
         print(f"\nNo crises skipped: all {len(panel)} have >= "
               f"{MIN_PRECUTOFF_ROWS} pre-cutoff rows.")
 
-    # CONTROL last in every table: it is the visibility reference, not a
-    # hypothesis under test, and never enters the FDR family.
-    tested = [c for c in panel[0]["z"] if c != CONTROL]
-    channels = tested + [CONTROL]
+    # CONTROLS last in every table: they are the visibility reference, not a
+    # hypothesis under test, and never enter the FDR family.
+    tested = [c for c in panel[0]["z"] if c not in CONTROLS]
+    channels = tested + list(CONTROLS)
     K = len(panel)
 
     # ---- per-crisis |d| table (descriptive only) ------------------------
@@ -385,27 +397,32 @@ def main() -> None:
     print("PER-CRISIS causal |d| -- DESCRIPTIVE ONLY, NOT a specialization claim.")
     print("=" * 100)
     hdr = (f"{'crisis':<22}" + "".join(f"{ch[:11]:>12}" for ch in tested)
-           + f"{'|CONTROL':>12}" + "  flag")
+           + f"{'|VOL-CTRL':>12}{'|DD-CTRL':>12}{'|TR-CTRL':>12}" + "  flag")
     print(hdr)
     print("-" * len(hdr))
     flags = []
     for i, c in enumerate(panel):
         row = (f"{c['name']:<22}" + "".join(f"{real_d[ch][i]:>12.2f}" for ch in tested)
-               + f"{real_d[CONTROL][i]:>12.2f}")
-        blind = real_d[CONTROL][i] < HMM_BLIND_THRESHOLD
+               + f"{real_d[CONTROL][i]:>12.2f}{real_d[CONTROL2][i]:>12.2f}"
+               + f"{real_d[CONTROL3][i]:>12.2f}")
+        blind = (real_d[CONTROL][i] < HMM_BLIND_THRESHOLD
+                 and real_d[CONTROL2][i] < HMM_BLIND_THRESHOLD
+                 and real_d[CONTROL3][i] < HMM_BLIND_THRESHOLD)
         if blind:
-            flags.append((c["name"], real_d[CONTROL][i]))
+            flags.append((c["name"], real_d[CONTROL][i], real_d[CONTROL2][i],
+                         real_d[CONTROL3][i]))
         print(row + ("  <-- NOT VISIBLE IN SPY/DIA" if blind else ""))
     print("-" * len(hdr))
     med = {ch: float(np.median(real_d[ch])) for ch in channels}
     print(f"{'MEDIAN (superseded)':<22}"
           + "".join(f"{med[ch]:>12.2f}" for ch in tested)
-          + f"{med[CONTROL]:>12.2f}")
+          + f"{med[CONTROL]:>12.2f}{med[CONTROL2]:>12.2f}{med[CONTROL3]:>12.2f}")
 
-    print(f"\nVISIBILITY flags (realized-vol control |d| < {HMM_BLIND_THRESHOLD}): "
+    print(f"\nVISIBILITY flags (ALL THREE controls |d| < {HMM_BLIND_THRESHOLD}): "
           f"{len(flags)} of {K} crises.")
-    for name, v in flags:
-        print(f"  {name:<22} control |d| = {v:.2f}")
+    for name, v_rv, v_dd, v_tr in flags:
+        print(f"  {name:<22} vol |d| = {v_rv:.2f}, drawdown |d| = {v_dd:.2f}, "
+              f"trailing return |d| = {v_tr:.2f}")
 
     # ---- assemble the finite-aligned panel matrices ---------------------
     Zs, Ms = align_panel(panel, channels)
@@ -425,17 +442,19 @@ def main() -> None:
                                         results[ch][f"draws_{fam}"], COUNT_PCT)
                    for fam in ("a", "b")} for ch in channels}
 
-    # ---- the positive control and the ceiling ---------------------------
-    cc = counts[CONTROL]
+    # ---- the positive controls and the ceiling ---------------------------
     print("\n" + "=" * 100)
-    print("POSITIVE CONTROL AND THE POWER CEILING -- read this before any result")
+    print("POSITIVE CONTROLS AND THE POWER CEILING -- read this before any result")
     print("=" * 100)
-    print(f"  MEDIAN |d| = {results[CONTROL]['real_med']:.2f} vs. its own null "
-          f"median {results[CONTROL]['a_med']:.2f}  (p = "
-          f"{results[CONTROL]['a_p']:.4f})  <-- the median CANNOT see it")
-    print(f"  COUNT      = {cc['a']['count']}/{K} crises clear their own "
-          f"{COUNT_PCT:.0f}th-pct floor  (p = {cc['a']['p']:.4f}, "
-          f"null mean {cc['a']['null_mean']:.2f})  <-- the count CAN")
+    for control in CONTROLS:
+        cc = counts[control]
+        print(f"  [{control}]")
+        print(f"    MEDIAN |d| = {results[control]['real_med']:.2f} vs. its own null "
+              f"median {results[control]['a_med']:.2f}  (p = "
+              f"{results[control]['a_p']:.4f})")
+        print(f"    COUNT      = {cc['a']['count']}/{K} crises clear their own "
+              f"{COUNT_PCT:.0f}th-pct floor  (p = {cc['a']['p']:.4f}, "
+              f"null mean {cc['a']['null_mean']:.2f})")
 
     # ---- headline: the COUNT --------------------------------------------
     print("\n" + "=" * 100)
@@ -451,14 +470,15 @@ def main() -> None:
               f"{cB['p']:>9.4f}{r['tau_max']:>7.0f}{r['real_med']:>9.2f}"
               f"{'p=' + format(r['a_p'], '.3f'):>14}")
     print("-" * 87)
-    r, cA, cB = results[CONTROL], cc["a"], cc["b"]
-    print(f"{CONTROL + ' (CTRL)':<20}{cA['count']:>9d}{cA['p']:>9.4f}"
-          f"{cB['count']:>10d}{cB['p']:>9.4f}{r['tau_max']:>7.0f}"
-          f"{r['real_med']:>9.2f}{'p=' + format(r['a_p'], '.3f'):>14}")
+    for control in CONTROLS:
+        r, cA, cB = results[control], counts[control]["a"], counts[control]["b"]
+        print(f"{control + ' (CTRL)':<20}{cA['count']:>9d}{cA['p']:>9.4f}"
+              f"{cB['count']:>10d}{cB['p']:>9.4f}{r['tau_max']:>7.0f}"
+              f"{r['real_med']:>9.2f}{'p=' + format(r['a_p'], '.3f'):>14}")
     print("\nWhich crises each channel cleared (null (a)):")
     for ch in channels:
         w = counts[ch]["a"]["which"]
-        tag = " [CONTROL]" if ch == CONTROL else ""
+        tag = " [CONTROL]" if ch in CONTROLS else ""
         print(f"  {ch:<20}" + (", ".join(panel[i]["name"] for i in w)
                                if len(w) else "(none)") + tag)
 

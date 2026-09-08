@@ -4,7 +4,7 @@ A from-scratch reproduction and extension of the QCML geometric-observable
 pipeline for detecting market regime shifts (Hammond 2026,
 [arXiv:2605.17117](https://arxiv.org/abs/2605.17117)), reframed through Quantum
 Fisher Information and the Cramér–Rao bound as estimation on a statistical
-manifold. **Status: v5.5.**
+manifold. **Status: v5.9.**
 
 **Headline: this test has almost no power.** Six geometric channels plus a
 Gaussian-HMM baseline are evaluated across a 15-crisis panel (SPY/DIA, Hammond
@@ -24,7 +24,10 @@ claims prediction: these are contemporaneous *detection* observables.
 - **The SLD mixed-state channel is decorrelated but undetected.** The novel extension correlates with every other channel at |ρ| < 0.13 (empirically distinct, not a redundant repackaging of the pure-state channels), yet does not clear its noise floor on any window tested. Orthogonality and detection are independent properties, and only the first is established.
 - **Ground energy `E0` is the only test to survive FDR correction** (2022 Rate Hikes, 1 of 28 primary-family tests), but at 1 survivor against 1.4 expected by chance, it is not read as a detection.
 - **Reduced purity reproduces Hammond's null result:** it leads rankings without clearing noise (p = 0.18 in his pipeline, p ≈ 0.07 to 0.09 here), an independent reproduction of a negative.
-- **The harness is validated on volatility events only.** The control detects the three vol crises (2007, 2008 GFC, COVID); the other 12 crises have no working positive control.
+- **Volatility validates the harness; a slow-grind control does not.** Realized vol clears 2007/2008/COVID; a 252-day drawdown control built for the other 12 (incl. 2022) clears only 2008 GFC and misses 2022 (|d| = 0.76 vs. floor 0.42) — persistence inflates its own floor faster than a real decline separates from it.
+- **A known decline is also undetected.** A synthetic ground-truth test (decline only, vol/corr untouched) still gets 0 of 9 channels past FDR — the harness lacks power for slow declines generally, not a defect in one control.
+- **Threshold quantified: ~5x real 2022.** A magnitude sweep shows drawdown/`E0` only clear past ≈53% decline (real 2022: −14%), deeper than 2008 GFC. A trend-matched null doesn't change this.
+- **A third, non-circular control narrows this to ~3x.** `trailing_return_126d` (bounded memory, unlike drawdown's peak-tracking) matches reduced purity's threshold — real progress, still short of 2022's actual ≈14%.
 
 ## Method
 
@@ -248,7 +251,11 @@ Per crisis it scores 3.05 (2008 GFC), 2.20 (2007), 1.99 (COVID) and 0.06–0.14 
 nine others (bare G.10 gives median 0.33, same three above |d| = 1). (2)
 End-to-end synthetic (spikes injected on the real 15 windows): realized vol median
 0.90 (q = 0.008), HMM q = 0.0032, spectral/purity behind (q = 0.058, 0.087);
-single-crisis synthetic scores every channel 0.89–4.71. Supporting checks clean:
+single-crisis synthetic scores every channel 0.89–4.71. (3) **Pure-drift
+synthetic** (vol/corr untouched, isolating a known 2022-scale decline):
+**0 of 9 channels survive FDR** (18 tests, 0.9 expected). Reduced purity
+closest (q = 0.066); drawdown highest |d| (0.85) but still fails (q = 0.29) —
+[detail](#validated-on-volatility-events-only). Supporting checks clean:
 masks peak exactly at shift 0 (±60-day sweep); zero NaN crisis days; vectorised
 z-score matches production to 7.6e-15; w = 20 near-optimal. **The count replaced
 the panel median** (which its own control invalidated, post-mortem in
@@ -288,12 +295,16 @@ minimum).
 | Spectral entropy | 0 | 1.00 | 0 | 1.00 | 483 | 0.40 (p = 0.85) |
 | QFI log-det | 0 | 1.00 | 0 | 1.00 | 442 | 0.36 (p = 0.94) |
 | **realized vol (CONTROL)** | **3** | **0.039** | **3** | **0.023** | 186 | 0.32 (p = 0.93) |
+| **drawdown 252d (CONTROL 2)** | **1** | **0.54** | **1** | **0.65** | 306 | 0.43 (p = 0.82) |
 
 **0 of 14 tests survive BH-FDR**: guaranteed by the statistic's resolution, no
 channel information. The informative comparison is the raw count: no geometric
-channel clears more than one crisis (0.75 expected) while the control clears three:
-`E0` → 2022 Rate Hikes; Berry and HMM → 2008 GFC; control → 2007, 2008 GFC,
-COVID. Reduced purity has the best median (0.71) and zero count hits (elevated
+channel clears more than one crisis (0.75 expected) while realized vol clears
+three and drawdown, the control built to catch what vol misses, clears only
+one — 2008 GFC, a vol crisis realized vol already caught, not a slow-grind one
+([why it fails](#validated-on-volatility-events-only)):
+`E0` → 2022 Rate Hikes; Berry and HMM → 2008 GFC; realized vol → 2007, 2008 GFC,
+COVID; drawdown → 2008 GFC. Reduced purity has the best median (0.71) and zero count hits (elevated
 across many crises, never spiking past its 95th pct in one). **H1/H2 (`E0`/SLD
 clear the panel median) are VOID**: tested against a statistic its control
 invalidated, so no verdict either way (post-mortem in `CHANGELOG.md`).
@@ -336,13 +347,80 @@ small; rest-group contamination; SPY/DIA too narrow; or Gap 2 the wrong target
 
 ### Validated on volatility events only {#validated-on-volatility-events-only}
 
-Realized vol is a **volatility** detector, so it validates the harness only on vol
-events. Its three panel hits (2007, 2008 GFC, COVID) are exactly the three vol
-spikes. On the **other 12 crises, including 2022, where vol fails (|d| = 0.53,
-p ≈ 0.31) but `E0` clears**: there is no working positive control. The fix is a
-second control sensitive to slow-grind crises (trailing drawdown, or term-
-structure / vol-of-vol) through the identical downstream; it
-should precede any further reading of per-channel results on non-vol crises.
+Realized vol validates the harness only on its own three vol crises (2007,
+2008 GFC, COVID). On the other 12, including 2022 (vol |d| = 0.53, p ≈ 0.31,
+but `E0` clears), a second control was built: **252-day trailing drawdown**
+(`qgmrd/baseline.py::drawdown_series`). **It fails too:**
+
+| crisis | \|d\| | floor | p | tau | clears? |
+|---|---|---|---|---|---|
+| 2022 Rate Hikes | 0.76 | 0.42 | 0.12 | 306 | no |
+| 2020 COVID | 0.61 | 0.49 | 0.21 | 306 | no |
+| panel-wide (count) | 1/15 | 0.75 expected | 0.54 | -- | -- |
+
+Its one hit (2008 GFC) is a vol crisis realized vol already caught. **Why:
+persistence, not absence of signal.** Drawdown is monotone-underwater by
+construction, so it's more autocorrelated than vol (τ ≈ 306 vs. 186), and its
+null 95% interval is [0.04, 3.89] — wide enough that even a real decline
+doesn't separate from a random window in a trending series. Depth-of-decline
+alone is not a free win.
+
+### Is a slow-grind decline even measurable here? {#is-a-slow-grind-decline-even-measurable-here-a-known-ground-truth-test}
+
+A known-ground-truth test (`diagnostics.py` TEST 2b) injects a certain decline
+(vol/corr untouched) on the real 15-window calendar — sanity check: realized
+vol stays at its null median (0.38), confirming nothing leaked into variance.
+**0 of 9 channels survive FDR** (18 tests, 0.9 expected). Reduced purity
+closest (q = 0.066), `E0` next (q = 0.15); drawdown scores the highest |d|
+(0.85) but still fails (q = 0.29) — same persistence problem. This reframes
+the drawdown/2022 null as harness-wide underpower, not a bad statistic choice
+— not proof declines are unmeasurable in principle, only that this pipeline
+can't certify one that's certainly there.
+
+A **trend-matched null** (TEST 2c: null pool restricted to comparably-declining
+windows, not any random one) doesn't help — real 2022 p stays ≈ 0.14, synthetic
+changes are noise-level. Raw decline size isn't what inflates the floor; the
+channel's own persistence (τ) is.
+
+A **magnitude sweep** (TEST 2d: inject a known decline into 2022's exact
+window, scaled 0.5–8× its real size) quantifies the ceiling:
+
+| × real 2022 | decline | drawdown \|d\| | `E0` \|d\| | clears? |
+|---|---|---|---|---|
+| 1× (real) | −14.0% | 0.09 | 0.12 | no |
+| 3× | −36.4% | 1.06 | 0.48 | no |
+| **5×** | **−53.0%** | **1.91** | **0.74** | **YES** |
+| 8× | −70.1% | 2.79 | 0.92 | YES |
+
+**Needs ≈5× the real 2022 decline (≈53%, deeper than 2008 GFC) before
+detecting a slow grind at all** — a quantified power ceiling, not a vague
+null. Also explains 2008 GFC clearing drawdown: its real magnitude (≈50%+),
+not its vol-crisis label, sits near this threshold.
+
+### A third control, non-circularly matching purity {#a-third-control-non-circularly-matching-puritys-threshold}
+
+Purity's edge traces to short autocorrelation (τ ≈ 28–83 vs. drawdown's
+τ ≈ 160–233) — but purity is an output of the embedding pipeline under test,
+so it can't itself be a control (circular). Built a non-circular analog:
+**`trailing_return_series`** (`qgmrd/baseline.py`) — fixed-window cumulative
+return, memory bounded by the window instead of drawdown's sliding peak.
+
+Window caveat: 126d was chosen from real-2022 performance (best |d| in a
+5–126d sweep); the ground-truth synthetic actually preferred 60d (weakly,
+|d| = 0.33, p = 0.56) — flagged, not resolved.
+
+| × real 2022 | decline | \|d\| | tau | p | clears? |
+|---|---|---|---|---|---|
+| 1× | −14.0% | 0.19 | 132 | 0.85 | no |
+| 2× | −26.1% | 0.76 | 144 | 0.32 | no |
+| **3×** | **−36.4%** | **1.28** | **155** | **0.04** | **YES** |
+| 5× | −53.0% | 2.16 | 173 | <0.001 | YES |
+
+**Clears at 3×** — matches purity, beats drawdown's 5×, confirmed by the
+trend-matched null too. τ is only modestly lower than drawdown's (~155–187
+vs. ~198–233) despite the threshold nearly halving, so autocorrelation isn't
+the whole story. Still doesn't clear 2022 itself (3× ≈ 36% vs. real ≈14%) —
+the gap narrows, doesn't close.
 
 ### Multi-asset panel, Task 3, a null result (`python scripts/multiasset_panel.py`)
 
@@ -379,8 +457,11 @@ matched control clear those crises, or is the signal absent?) is **untested**; t
 two explanations predict the same output here. Geometric channels: 0 of 14 survive
 FDR (ceiling 5 of 14), each clearing ~one out-of-control crisis (QFI log-det →
 2019 Repo, spectral → 2022, SLD → 2013 Taper Tantrum) = the ~0.75 chance rate.
-This elevates the slow-grind [second control](#validated-on-volatility-events-only), the one instrument that separates the two explanations, to the
-critical next step.
+This elevated the slow-grind [second control](#validated-on-volatility-events-only)
+to the critical next step, as the one instrument able to separate the two
+explanations. Built and run, plus a third non-circular variant afterward — both
+fail to clear 2022, so the two explanations remain **undistinguished** and the
+gap stays open.
 
 ### False-alarm-rate evaluation, Task 4, inconclusive by infeasibility (`python scripts/far_eval.py`)
 
@@ -548,13 +629,24 @@ multi-asset panel runs 14 crises, not 15.
   a **power** finding, the evaluation tops out at p = 0.039; H1/H2 VOID); harness
   diagnostics (code correct, statistic was the problem; HMM demoted; 2007 artifact
   flagged); multi-asset panel (null); FAR (inconclusive by infeasibility).
-- **v6, next, power being the binding constraint** (more crises won't help; the
-  count saturates at 15): (i) **second slow-grind control**, validates
-  the 12 non-vol crises including 2022; comes first; (ii) **multi-asset widening**:
-  raises how many crises *exist* to detect; (iii) **FAR / expanding-window**,
-  closes Gap 2; (iv) **Bures/MMD baseline** (Task 3.5), the decisive
-  test for whether the SLD channel is more than a relabeled classical statistic.
-  Pre-registration is deferred to whichever is built.
+- **v5.6–v5.9, DONE.** Slow-grind control investigation: drawdown_252d (second
+  control) fails to validate (1/15 panel crises; misses 2022 at |d| = 0.76 vs.
+  floor 0.42, τ ≈ 306 vs. vol's 186); a known-ground-truth synthetic confirms
+  0/9 channels survive FDR (harness-wide underpower, not a bad statistic); a
+  trend-matched null doesn't help; a magnitude sweep quantifies the ceiling at
+  ≈5x real 2022 (≈53%, deeper than 2008 GFC); a third, non-circular control
+  (`trailing_return_126d`, following reduced purity's short-memory lead)
+  narrows this to 3x, still short of 2022's actual ≈14%. See
+  ["Validated on volatility events only"](#validated-on-volatility-events-only)
+  onward.
+- **v6, next, power still the binding constraint** (more crises won't help; the
+  count saturates at 15): (i) **multi-asset widening**: raises how many crises
+  *exist* to detect; (ii) **FAR / expanding-window**, closes Gap 2; (iii)
+  **Bures/MMD baseline** (Task 3.5), the decisive test for whether the SLD
+  channel is more than a relabeled classical statistic; (iv) **characterize why
+  `trailing_return_126d` beats drawdown beyond τ alone** (the window-length
+  divergence between real and synthetic data is still unresolved). Pre-registration
+  is deferred to whichever is built.
 
 ## Layout
 
@@ -570,7 +662,7 @@ qgmrd/
   features.py     returns / vol / momentum / cross-corr
   crises.py       THE crisis window registry (G.10 +/-10 trading days)
   pipeline.py     embed_series + Cohen's d
-  baseline.py     Gaussian HMM (baseline) + realized_vol_series (CONTROL)
+  baseline.py     Gaussian HMM (baseline) + realized_vol_series / drawdown_series / trailing_return_series (CONTROLS)
   data.py         synthetic generator + pinned snapshot loader
 scripts/
   run_demo.py             synthetic smoke run

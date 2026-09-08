@@ -30,7 +30,11 @@ from causal_eval import (  # noqa: E402  (shared pipeline pieces)
     raw_channels,
     zscored,
 )
-from qgmrd.baseline import realized_vol_series  # noqa: E402
+from qgmrd.baseline import (  # noqa: E402
+    drawdown_series,
+    realized_vol_series,
+    trailing_return_series,
+)
 from qgmrd.crises import context as crisis_context  # noqa: E402
 from qgmrd.data import load_prices  # noqa: E402
 from qgmrd.features import build_features  # noqa: E402
@@ -39,12 +43,17 @@ from qgmrd.operators import random_hermitian_operators  # noqa: E402
 N_WINDOW_DRAWS = 5000        # random-window null (a) placements
 PRIMARY_CRISES = {"2020 COVID", "2022 Rate Hikes"}   # FDR family; China is exploratory
 FDR_ALPHA = 0.05
-CONTROL = "realized_vol_20d"  # positive control; reported, NOT in the FDR family
+CONTROL = "realized_vol_20d"     # primary control (vol crises); NOT in the FDR family
+CONTROL2 = "drawdown_252d"       # second control (slow-grind crises, fails); NOT in the FDR family
+CONTROL3 = "trailing_return_126d"  # third control (slow-grind crises); NOT in the FDR family
+CONTROLS = (CONTROL, CONTROL2, CONTROL3)
+# A 4th control should trigger refactoring causal_channels_for_crisis to take
+# extra_controls: dict[str, np.ndarray] instead of one named param each.
 
 
-def causal_channels_for_crisis(features, ops, returns, ctx, rv=None):
-    """Seven causal (past-fit) z-scored channels for one crisis, plus the realized-vol
-    control as an eighth series (z-scored identically, not in the FDR family)."""
+def causal_channels_for_crisis(features, ops, returns, ctx, rv=None, dd=None, tr=None):
+    """Seven causal (past-fit) z-scored channels for one crisis, plus the three
+    controls as extra series (z-scored identically, none in the FDR family)."""
     pre = ctx["pre"]
     p = min(8, features.shape[1])
     sc = StandardScaler().fit(features.values[pre])
@@ -53,6 +62,10 @@ def causal_channels_for_crisis(features, ops, returns, ctx, rv=None):
     raw = raw_channels(Xp, ops, returns, hmm_fit=pre)
     if rv is not None:
         raw[CONTROL] = rv          # needs no fitting -- same series every crisis
+    if dd is not None:
+        raw[CONTROL2] = dd         # needs no fitting -- same series every crisis
+    if tr is not None:
+        raw[CONTROL3] = tr         # needs no fitting -- same series every crisis
     return zscored(raw)
 
 
@@ -157,6 +170,8 @@ def main() -> None:
     ops = random_hermitian_operators(min(8, features.shape[1]), n=N, seed=SEED)
     returns = np.log(prices["SPY"]).diff().reindex(idx).values
     rv = realized_vol_series(prices["SPY"]).reindex(idx).values
+    dd = drawdown_series(prices["SPY"]).reindex(idx).values
+    tr = trailing_return_series(prices["SPY"], window=126).reindex(idx).values
 
     print("\n" + "=" * 78)
     print("Null-model tests -- per-channel noise floor")
@@ -174,7 +189,7 @@ def main() -> None:
                   f"(< {MIN_PRECUTOFF_ROWS}).")
             continue
 
-        causal = causal_channels_for_crisis(features, ops, returns, ctx, rv=rv)
+        causal = causal_channels_for_crisis(features, ops, returns, ctx, rv=rv, dd=dd, tr=tr)
         crisis_mask = ctx["mask"]
 
         tag = "PRIMARY" if name in PRIMARY_CRISES else "EXPLORATORY (excluded from FDR)"
@@ -197,18 +212,20 @@ def main() -> None:
                   f"{r['b_med']:>8.2f}{r['b_pct']:>8.1f}{r['b_p']:>9.4f}"
                   f"{r['tau']:>7.1f}{r['n_eff']:>7.0f}")
 
-            # control is reported but never in the FDR family (instrument check).
-            if name in PRIMARY_CRISES and ch != CONTROL:
+            # controls are reported but never in the FDR family (instrument check).
+            if name in PRIMARY_CRISES and ch not in CONTROLS:
                 primary_p.extend([r["a_p"], r["b_p"]])
                 primary_key.extend([f"{name}/{ch}/(a)", f"{name}/{ch}/(b)"])
 
         control_by_crisis[name] = results
 
-    # ---- positive control: can this test detect anything at all? ----
+    # ---- positive controls: can this test detect anything at all? ----
     print("\n" + "=" * 78)
-    print("POSITIVE CONTROL -- does the SINGLE-CRISIS test have a working")
-    print("instrument? 20-day realized volatility through the identical")
-    print("downstream. It is reported here and EXCLUDED from the FDR family.")
+    print("POSITIVE CONTROLS -- does the SINGLE-CRISIS test have a working")
+    print("instrument? 20-day realized vol (vol crises), 252-day trailing")
+    print("drawdown, and 126-day trailing return (both slow-grind) through the")
+    print("identical downstream. All three are reported here and EXCLUDED from")
+    print("the FDR family.")
     print("=" * 78)
     print(f"\n{'crisis':<16}{'channel':<20}{'|d|':>7}{'(a)flr':>8}{'(b)flr':>8}"
           f"{'(a)pct':>8}{'(a)p':>9}{'(b)p':>9}{'tau':>8}{'Neff':>7}  clears?")
@@ -217,24 +234,25 @@ def main() -> None:
         res = control_by_crisis.get(name)
         if not res:
             continue
-        for ch in sorted(res, key=lambda c: (c != CONTROL, -res[c]["real"])):
+        for ch in sorted(res, key=lambda c: (c not in CONTROLS, -res[c]["real"])):
             r = res[ch]
             clears = "YES" if (r["a_p"] < 0.05 and r["b_p"] < 0.05) else "no"
-            tag = " <-- CONTROL" if ch == CONTROL else ""
+            tag = f" <-- {ch}" if ch in CONTROLS else ""
             print(f"{name.split()[0]:<16}{ch:<20}{r['real']:>7.2f}"
                   f"{r['a_med']:>8.2f}{r['b_med']:>8.2f}{r['a_pct']:>8.1f}"
                   f"{r['a_p']:>9.4f}{r['b_p']:>9.4f}{r['tau']:>8.1f}"
                   f"{r['n_eff']:>7.0f}  {clears}{tag}")
         print()
 
-    ctrl_clears = {}
-    for name, res in control_by_crisis.items():
-        if name in PRIMARY_CRISES and CONTROL in res:
-            r = res[CONTROL]
-            ctrl_clears[name] = (r["a_p"] < 0.05 and r["b_p"] < 0.05)
-    n_ctrl = sum(ctrl_clears.values())
-    print(f"CONTROL CLEARS ON {n_ctrl} OF {len(ctrl_clears)} PRIMARY CRISES: "
-          + ", ".join(f"{k}={'YES' if v else 'no'}" for k, v in ctrl_clears.items()))
+    for control in CONTROLS:
+        ctrl_clears = {}
+        for name, res in control_by_crisis.items():
+            if name in PRIMARY_CRISES and control in res:
+                r = res[control]
+                ctrl_clears[name] = (r["a_p"] < 0.05 and r["b_p"] < 0.05)
+        n_ctrl = sum(ctrl_clears.values())
+        print(f"{control} CLEARS ON {n_ctrl} OF {len(ctrl_clears)} PRIMARY CRISES: "
+              + ", ".join(f"{k}={'YES' if v else 'no'}" for k, v in ctrl_clears.items()))
 
     # ---- Benjamini-Hochberg across the primary family only ----
     print("\n" + "=" * 78)
