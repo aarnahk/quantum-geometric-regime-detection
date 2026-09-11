@@ -4,7 +4,7 @@ A from-scratch reproduction and extension of the QCML geometric-observable
 pipeline for detecting market regime shifts (Hammond 2026,
 [arXiv:2605.17117](https://arxiv.org/abs/2605.17117)), reframed through Quantum
 Fisher Information and the Cramér–Rao bound as estimation on a statistical
-manifold. **Status: v5.9.**
+manifold. **Status: v5.10.**
 
 **Headline: this test has almost no power.** Six geometric channels plus a
 Gaussian-HMM baseline are evaluated across a 15-crisis panel (SPY/DIA, Hammond
@@ -28,6 +28,7 @@ claims prediction: these are contemporaneous *detection* observables.
 - **A known decline is also undetected.** A synthetic ground-truth test (decline only, vol/corr untouched) still gets 0 of 9 channels past FDR: the harness lacks power for slow declines generally, not a defect in one control.
 - **Threshold quantified: ~5x real 2022.** A magnitude sweep shows drawdown/`E0` only clear past ≈53% decline (real 2022: −14%), deeper than 2008 GFC. A trend-matched null doesn't change this.
 - **A third, non-circular control narrows this to ~3x.** `trailing_return_126d` (bounded memory, unlike drawdown's peak-tracking) matches reduced purity's threshold: real progress, though still short of 2022's actual ≈14%.
+- **SLD does not beat classical baselines built to mimic it.** Four channels, from raw-feature classical distances to the exact classical part of quantum Fisher information, all land in the same statistical range as SLD. A synthetic check shows the quantum coherence term can matter in principle, just not here.
 
 ## Method
 
@@ -427,6 +428,48 @@ so autocorrelation isn't the whole explanation. It still doesn't clear 2022
 itself (3x is about 36%, real 2022 was about 14%): the gap narrows, but
 doesn't close.
 
+### Classical baselines for SLD: no coherence advantage found {#classical-baselines-for-sld}
+
+SLD is this project's one genuinely novel channel, everything else reproduces
+Hammond's taxonomy. Question: does the quantum formalism (embedding, mixed
+state, symmetric logarithmic derivative) add real information, or does a
+classical statistic on the same inputs do just as well? Four channels test
+this, each isolating one more layer:
+
+| channel | isolates | median \|d\| | 95% CI | count |
+|---|---|---|---|---|
+| `classical_bures_w20` | raw features, Gaussian distance, no embedding | 0.45 | [0.32, 0.83] | 0/15 |
+| `classical_mmd_w20` | raw features, nonparametric distance, no embedding | 0.40 | [0.29, 0.85] | 1/15 |
+| `frobenius_rho_w20` | same rho_t as SLD, naive Euclidean distance | 0.38 | [0.20, 0.85] | 0/15 |
+| `classical_pop_fisher_w20` | same rho_t, classical Fisher info, no coherence | 0.41 | [0.22, 0.60] | 2/15 |
+| `sld_qfi_w20` | full quantum Fisher info, with coherence | 0.46 | [0.26, 0.62] | 0/15 |
+
+All five CIs overlap heavily, clustered around median |d| 0.4 to 0.46. SLD
+does not separate from any of them, including `classical_pop_fisher_w20`:
+QFI decomposes exactly into a classical population term (eigenvalues of rho)
+plus a coherence term (eigenbasis rotation), and this channel keeps only the
+first. SLD beating it would be the cleanest possible evidence of a real
+coherence contribution.
+
+A synthetic sanity check (`qgmrd/classical_baseline.py`, a clean injected
+regime shift) shows the coherence term can matter in principle: SLD's peak
+response there is 130x its baseline vs. 27x for the classical-population-only
+version. So the formalism is not vacuous, that gap just does not appear on
+real market data at this sample size.
+
+**Conclusion: SLD should be described as a Bures-rate / Fisher-information
+statistic, not as a detector that draws power from quantum coherence.** The
+coherence term is real and can matter (shown synthetically), it is not shown
+to matter here.
+
+**A bug worth naming.** The first version of `classical_mmd_w20` recomputed
+its kernel bandwidth from each pair of adjacent, 95%-overlapping windows.
+That inflates the bandwidth exactly when a real shift is present (the local
+sample already spans both regimes) and silently suppresses the statistic's
+own sensitivity right when it matters. Fixed by fixing the bandwidth once,
+globally, from the whole series. Caught by a synthetic sanity check before
+the real run, not after.
+
 ### Multi-asset panel, Task 3, a null result (`python scripts/multiasset_panel.py`)
 
 Widens the instrument set to **SPY / TLT / UUP / GLD** (DIA dropped, corr > 0.9),
@@ -644,14 +687,19 @@ multi-asset panel runs 14 crises, not 15.
   narrows this to 3x, still short of 2022's actual ≈14%. See
   ["Validated on volatility events only"](#validated-on-volatility-events-only)
   onward.
+- **v5.10, DONE.** Bures/MMD baseline for SLD (Task 3.5), the decisive test
+  for whether it is more than a relabeled classical statistic. Four channels,
+  each isolating one more layer (raw features, same rho_t, with and without
+  coherence); SLD does not separate from any of them. A synthetic check shows
+  the coherence term can matter in principle (130x vs. 27x peak response on
+  an injected shift), just not on real data at this sample size. See
+  ["Classical baselines for SLD"](#classical-baselines-for-sld).
 - **v6, next, power still the binding constraint** (more crises won't help; the
   count saturates at 15): (i) **multi-asset widening**: raises how many crises
   *exist* to detect; (ii) **FAR / expanding-window**, closes Gap 2; (iii)
-  **Bures/MMD baseline** (Task 3.5), the decisive test for whether the SLD
-  channel is more than a relabeled classical statistic; (iv) **characterize why
-  `trailing_return_126d` beats drawdown beyond τ alone** (the window-length
-  divergence between real and synthetic data is still unresolved). Pre-registration
-  is deferred to whichever is built.
+  **characterize why `trailing_return_126d` beats drawdown beyond τ alone**
+  (the window-length divergence between real and synthetic data is still
+  unresolved). Pre-registration is deferred to whichever is built.
 
 ## Layout
 
@@ -662,7 +710,9 @@ qgmrd/
   observables.py  spectral entropy, reduced purity
   geometry.py     metric (2 paths), QFI, QCRB, Berry plaquette
   channels.py     Berry rate / QFI log-det / E0 time series
-  sld.py          SLD, mixed-state QFI (the extension)
+  sld.py          SLD, mixed-state QFI (the extension) + classical baselines
+                  on the same rho_t (Frobenius, population Fisher info)
+  classical_baseline.py  raw-feature classical baselines for SLD (Bures, MMD)
   zscore.py       causal expanding-window z-score (Algorithm 1)
   features.py     returns / vol / momentum / cross-corr
   crises.py       THE crisis window registry (G.10 +/-10 trading days)

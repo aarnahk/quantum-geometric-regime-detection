@@ -22,6 +22,7 @@ from qgmrd.channels import (
     ground_energy_series,
     qfi_logdet_series,
 )
+from qgmrd.classical_baseline import classical_bures_time_series, mmd_time_series
 from qgmrd.crises import LEGACY_THREE, MIN_PRECUTOFF_ROWS
 from qgmrd.crises import context as crisis_context
 from qgmrd.crises import get as crisis_get
@@ -30,7 +31,11 @@ from qgmrd.embedding import ground_state
 from qgmrd.features import build_features
 from qgmrd.observables import reduced_purity, spectral_entropy
 from qgmrd.operators import random_hermitian_operators
-from qgmrd.sld import sld_qfi_time_series
+from qgmrd.sld import (
+    frobenius_rho_time_series,
+    population_fisher_time_series,
+    sld_qfi_time_series,
+)
 from qgmrd.zscore import causal_zscore
 
 # (name, start_month, end_month) from qgmrd/crises.py (G.10 +/-10). These three
@@ -40,6 +45,7 @@ CRISES = [crisis_get(name) for name in LEGACY_THREE]
 N = 8
 DIM_A = 2
 SLD_W = 20
+BURES_W = 20  # same window as SLD, so the head-to-head comparison is fair
 SEED = 42
 
 
@@ -60,7 +66,7 @@ def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
 
 def raw_channels(Xp: np.ndarray, ops: np.ndarray, returns: np.ndarray,
                  hmm_fit: np.ndarray) -> dict[str, np.ndarray]:
-    """All seven raw (pre-z-score) channel series from embedding Xp. ``hmm_fit`` is the
+    """All eleven raw (pre-z-score) channel series from embedding Xp. ``hmm_fit`` is the
     boolean mask of rows the HMM may fit on (all rows offline; pre-cutoff for causal)."""
     T = Xp.shape[0]
     se = np.empty(T)
@@ -77,6 +83,10 @@ def raw_channels(Xp: np.ndarray, ops: np.ndarray, returns: np.ndarray,
         "berry_phase_rate": berry_phase_rate_series(Xp, ops),
         "qfi_logdet": qfi_logdet_series(Xp, ops),
         "sld_qfi_w20": sld_qfi_time_series(Xp, ops, window=SLD_W),
+        "classical_bures_w20": classical_bures_time_series(Xp, window=BURES_W),
+        "classical_mmd_w20": mmd_time_series(Xp, window=BURES_W),
+        "frobenius_rho_w20": frobenius_rho_time_series(Xp, ops, window=SLD_W),
+        "classical_pop_fisher_w20": population_fisher_time_series(Xp, ops, window=SLD_W),
         "hmm_high_var_prob": hmm_high_variance_prob_causal(returns, hmm_fit),
     }
 

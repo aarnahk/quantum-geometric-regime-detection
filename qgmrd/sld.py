@@ -124,3 +124,65 @@ def sld_qfi_time_series(
             out[t] = sld_qfi(rho_t, drho)
         rho_prev = rho_t
     return out
+
+
+def frobenius_rho_time_series(
+    X: np.ndarray, ops: np.ndarray, window: int = 20
+) -> np.ndarray:
+    """Hilbert-Schmidt distance ||rho_t - rho_{t-1}||_F on the SAME rolling
+    density matrix SLD uses -- the make-or-break test for the SLD FORMALISM
+    specifically, isolated from the embedding.
+
+    Identical rho_t construction as ``sld_qfi_time_series`` (same states,
+    same window, same one-day comparison); only the last step changes, from
+    solving for the SLD operator and computing Tr(L^2 rho) to an ordinary
+    Euclidean matrix distance. No fidelity, no matrix square roots, no
+    information geometry -- treats rho as a flat list of numbers. If SLD
+    does not beat this, the QFI/SLD math is not earning its complexity over
+    the embedding alone.
+    """
+    T, _ = X.shape
+    states = np.stack([_ground(X[t], ops) for t in range(T)])
+
+    out = np.full(T, np.nan)
+    rho_prev = None
+    for t in range(window - 1, T):
+        rho_t = window_density_matrix(states[t - window + 1 : t + 1])
+        if rho_prev is not None:
+            out[t] = float(np.linalg.norm(rho_t - rho_prev, ord="fro"))
+        rho_prev = rho_t
+    return out
+
+
+def population_fisher_time_series(
+    X: np.ndarray, ops: np.ndarray, window: int = 20
+) -> np.ndarray:
+    """Classical Fisher information of rho_t's EIGENVALUES alone -- the
+    apples-to-apples baseline for isolating genuine quantum coherence.
+
+    QFI of a mixed state decomposes exactly into a classical Fisher-info term
+    from how the populations (eigenvalues) change, plus a coherence term from
+    how the eigenbasis rotates. Frobenius distance is too weak a baseline for
+    "is SLD's coherence real" -- any Fisher-metric statistic beats naive
+    Euclidean distance on small shifts, quantum or not. This isolates the
+    right comparison: same SLD formula (JCP Eq. 10's denominator), applied to
+    ONLY the diagonal (population) terms, dropping the eigenbasis-rotation
+    (coherence) contribution entirely. If SLD does not beat this, its extra
+    sensitivity over Frobenius is generic Fisher-metric reweighting, not
+    genuine quantum coherence.
+    """
+    T, _ = X.shape
+    states = np.stack([_ground(X[t], ops) for t in range(T)])
+
+    out = np.full(T, np.nan)
+    prev_evals = None
+    for t in range(window - 1, T):
+        rho_t = window_density_matrix(states[t - window + 1 : t + 1])
+        evals = np.sort(np.linalg.eigvalsh(rho_t))[::-1]  # descending; positional "population"
+        if prev_evals is not None:
+            dp = evals - prev_evals
+            denom = evals + prev_evals
+            mask = denom > 1e-12
+            out[t] = float(np.sum((2.0 * dp[mask]) ** 2 / denom[mask])) if mask.any() else 0.0
+        prev_evals = evals
+    return out

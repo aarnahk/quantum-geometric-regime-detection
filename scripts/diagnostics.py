@@ -323,7 +323,7 @@ def main() -> None:
     Zs, Ms = align_panel(panel, channels)
     results = {ch: panel_null_tests(Zs[ch], Ms[ch]) for ch in channels}
     report_null_table(results, channels,
-                      "Panel medians, 7 channels + 3 controls:",
+                      "Panel medians, 11 channels + 3 controls:",
                       highlight=("realized_vol_20d", "drawdown_252d", "trailing_return_126d"))
 
     rv, dd, tr = (results["realized_vol_20d"], results["drawdown_252d"],

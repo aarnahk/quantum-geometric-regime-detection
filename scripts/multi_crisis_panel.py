@@ -347,7 +347,7 @@ def main() -> None:
     p = min(8, features.shape[1])
 
     print("\n" + "=" * 100)
-    print("MULTI-CRISIS PANEL -- 15 crises, 7 channels + 3 CONTROLS "
+    print("MULTI-CRISIS PANEL -- 15 crises, 11 channels + 3 CONTROLS "
           "(realized vol, drawdown, trailing return)")
     print("=" * 100)
 
@@ -491,7 +491,7 @@ def main() -> None:
 
     print("\n" + "=" * 100)
     print(f"Benjamini-Hochberg FDR over {len(pvals)} tests "
-          f"(7 channels x 2 nulls). Expected chance survivors at "
+          f"({len(tested)} channels x 2 nulls). Expected chance survivors at "
           f"alpha={FDR_ALPHA}: {len(pvals) * FDR_ALPHA:.1f}.")
     print("=" * 100)
     print(f"{'test':<28}{'raw p':>10}{'BH q':>10}{'q<0.05':>9}")

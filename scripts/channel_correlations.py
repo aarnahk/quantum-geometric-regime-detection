@@ -1,4 +1,4 @@
-"""Task 1: pairwise correlation of the seven causal z-scored detectors on SPY/DIA.
+"""Task 1: pairwise correlation of the eleven causal z-scored detectors on SPY/DIA.
 
 Answers Open Question 1 -- is the SLD mixed-state QFI channel redundant with the
 pure-state channels, or genuinely decorrelated? Reports the SLD row explicitly.
