@@ -4,7 +4,7 @@ A from-scratch reproduction and extension of the QCML geometric-observable
 pipeline for detecting market regime shifts (Hammond 2026,
 [arXiv:2605.17117](https://arxiv.org/abs/2605.17117)), reframed through Quantum
 Fisher Information and the Cramér–Rao bound as estimation on a statistical
-manifold. **Status: v5.10.**
+manifold. **Status: v5.11.**
 
 **Headline: this test has almost no power.** Six geometric channels plus a
 Gaussian-HMM baseline are evaluated across a 15-crisis panel (SPY/DIA, Hammond
@@ -29,6 +29,7 @@ claims prediction: these are contemporaneous *detection* observables.
 - **Threshold quantified: ~5x real 2022.** A magnitude sweep shows drawdown/`E0` only clear past ≈53% decline (real 2022: −14%), deeper than 2008 GFC. A trend-matched null doesn't change this.
 - **A third, non-circular control narrows this to ~3x.** `trailing_return_126d` (bounded memory, unlike drawdown's peak-tracking) matches reduced purity's threshold: real progress, though still short of 2022's actual ≈14%.
 - **SLD does not beat classical baselines built to mimic it.** Four channels, from raw-feature classical distances to the exact classical part of quantum Fisher information, all land in the same statistical range as SLD. A synthetic check shows the quantum coherence term can matter in principle, just not here.
+- **Drawdown's weaker threshold traces to what it measures, not just autocorrelation.** It tracks the worst point reached in a window, not the net outcome, so ordinary dips that fully recover still count. Trailing return tracks net decline much more tightly (r = 0.79 vs. 0.53 at 2022's window length), giving it a cleaner null.
 
 ## Method
 
@@ -428,6 +429,17 @@ so autocorrelation isn't the whole explanation. It still doesn't clear 2022
 itself (3x is about 36%, real 2022 was about 14%): the gap narrows, but
 doesn't close.
 
+**Why the gap is bigger than tau predicts.** Across every crisis-length window
+tested (62 to 229 days), trailing return's mean value correlates with the
+window's own net decline much more tightly than drawdown's does (r = 0.79 vs.
+0.53 at 229 days, the 2022 length; r = 0.45 vs. 0.36 at 62 days). Drawdown
+tracks the worst point reached, not the net outcome, so an ordinary choppy dip
+that fully recovers still registers. Trailing return mostly requires an actual
+sustained decline to register. That means far more of ordinary market history
+produces a moderately elevated drawdown reading than a large trailing-return
+reading, which inflates drawdown's null floor for reasons that have nothing to
+do with autocorrelation.
+
 ### Classical baselines for SLD: no coherence advantage found {#classical-baselines-for-sld}
 
 SLD is this project's one genuinely novel channel, everything else reproduces
@@ -694,12 +706,17 @@ multi-asset panel runs 14 crises, not 15.
   the coherence term can matter in principle (130x vs. 27x peak response on
   an injected shift), just not on real data at this sample size. See
   ["Classical baselines for SLD"](#classical-baselines-for-sld).
+- **v5.11, DONE.** Why trailing return beats drawdown beyond τ: across every
+  crisis-length window (62 to 229 days), trailing return's mean value tracks
+  the window's own net decline much more tightly than drawdown's does
+  (r = 0.79 vs. 0.53 at 229 days). Drawdown responds to the worst point
+  reached, not the net outcome, so ordinary choppy dips that fully recover
+  still inflate its null floor. See ["A third control that isn't
+  circular"](#a-third-control-non-circularly-matching-puritys-threshold).
 - **v6, next, power still the binding constraint** (more crises won't help; the
   count saturates at 15): (i) **multi-asset widening**: raises how many crises
-  *exist* to detect; (ii) **FAR / expanding-window**, closes Gap 2; (iii)
-  **characterize why `trailing_return_126d` beats drawdown beyond τ alone**
-  (the window-length divergence between real and synthetic data is still
-  unresolved). Pre-registration is deferred to whichever is built.
+  *exist* to detect; (ii) **FAR / expanding-window**, closes Gap 2. Pre-registration
+  is deferred to whichever is built.
 
 ## Layout
 
