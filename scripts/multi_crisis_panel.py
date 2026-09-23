@@ -51,6 +51,10 @@ CONTROL = "realized_vol_20d"    # primary control (vol crises); never in the fam
 CONTROL2 = "drawdown_252d"      # second control (slow-grind crises, fails); never in the family
 CONTROL3 = "trailing_return_126d"  # third control (slow-grind crises); never in the family
 CONTROLS = (CONTROL, CONTROL2, CONTROL3)
+# Baselines built to validate SLD, not candidate detectors; reported like every
+# other channel but excluded from the FDR family for the same reason CONTROLS is.
+SLD_BASELINES = ("classical_bures_w20", "classical_mmd_w20",
+                 "frobenius_rho_w20", "classical_pop_fisher_w20")
 COUNT_PCT = 95.0               # per-crisis threshold percentile for the count
 MIN_BOOT_CRISIS_DAYS = 10  # a crisis contributes to a replicate only above this
 
@@ -482,16 +486,17 @@ def main() -> None:
         print(f"  {ch:<20}" + (", ".join(panel[i]["name"] for i in w)
                                if len(w) else "(none)") + tag)
 
-    # ---- BH-FDR over the 14 count tests ---------------------------------
+    # ---- BH-FDR over the count tests -------------------------------------
+    fdr_family = [c for c in tested if c not in SLD_BASELINES]
     keys, pvals = [], []
-    for ch in tested:                      # CONTROL is never in the family
+    for ch in fdr_family:      # CONTROLS and SLD_BASELINES are never in the family
         keys += [f"{ch}/(a)", f"{ch}/(b)"]
         pvals += [counts[ch]["a"]["p"], counts[ch]["b"]["p"]]
     q = bh_fdr(pvals)
 
     print("\n" + "=" * 100)
     print(f"Benjamini-Hochberg FDR over {len(pvals)} tests "
-          f"({len(tested)} channels x 2 nulls). Expected chance survivors at "
+          f"({len(fdr_family)} channels x 2 nulls). Expected chance survivors at "
           f"alpha={FDR_ALPHA}: {len(pvals) * FDR_ALPHA:.1f}.")
     print("=" * 100)
     print(f"{'test':<28}{'raw p':>10}{'BH q':>10}{'q<0.05':>9}")

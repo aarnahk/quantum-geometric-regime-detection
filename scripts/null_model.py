@@ -47,6 +47,10 @@ CONTROL = "realized_vol_20d"     # primary control (vol crises); NOT in the FDR 
 CONTROL2 = "drawdown_252d"       # second control (slow-grind crises, fails); NOT in the FDR family
 CONTROL3 = "trailing_return_126d"  # third control (slow-grind crises); NOT in the FDR family
 CONTROLS = (CONTROL, CONTROL2, CONTROL3)
+# Baselines built to validate SLD, not candidate detectors; reported like every
+# other channel but excluded from the FDR family for the same reason CONTROLS is.
+SLD_BASELINES = ("classical_bures_w20", "classical_mmd_w20",
+                 "frobenius_rho_w20", "classical_pop_fisher_w20")
 # A 4th control should trigger refactoring causal_channels_for_crisis to take
 # extra_controls: dict[str, np.ndarray] instead of one named param each.
 
@@ -212,8 +216,8 @@ def main() -> None:
                   f"{r['b_med']:>8.2f}{r['b_pct']:>8.1f}{r['b_p']:>9.4f}"
                   f"{r['tau']:>7.1f}{r['n_eff']:>7.0f}")
 
-            # controls are reported but never in the FDR family (instrument check).
-            if name in PRIMARY_CRISES and ch not in CONTROLS:
+            # controls and SLD baselines are reported but never in the FDR family.
+            if name in PRIMARY_CRISES and ch not in CONTROLS and ch not in SLD_BASELINES:
                 primary_p.extend([r["a_p"], r["b_p"]])
                 primary_key.extend([f"{name}/{ch}/(a)", f"{name}/{ch}/(b)"])
 

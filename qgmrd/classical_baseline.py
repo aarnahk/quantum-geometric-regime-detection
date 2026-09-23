@@ -69,7 +69,8 @@ def classical_bures_time_series(X: np.ndarray, window: int = 20) -> np.ndarray:
     return out
 
 
-def _global_gamma(X: np.ndarray, sample_size: int = 400, seed: int = 0) -> float:
+def _global_gamma(X: np.ndarray, causal_mask: np.ndarray = None,
+                  sample_size: int = 400, seed: int = 0) -> float:
     """Median-heuristic RBF bandwidth from a random subsample of ALL pairwise
     distances in X, fixed once for the whole series.
 
@@ -80,11 +81,18 @@ def _global_gamma(X: np.ndarray, sample_size: int = 400, seed: int = 0) -> float
     statistic's own sensitivity exactly when it matters. A bandwidth that
     characterizes the data's overall scale, not the local window pair,
     avoids that self-sabotage.
+
+    ``causal_mask``, if given, restricts the subsample to those rows (e.g.
+    the pre-cutoff rows a crisis's preprocessing was fit on). Without it,
+    this samples from the WHOLE series, including rows after the crisis
+    being scored, a real look-ahead leak in this one auxiliary parameter.
+    Callers inside the causal pipeline must pass it.
     """
+    pool = X if causal_mask is None else X[causal_mask]
     rng = np.random.default_rng(seed)
-    n = len(X)
+    n = len(pool)
     idx = rng.choice(n, size=min(sample_size, n), replace=False)
-    sample = X[idx]
+    sample = pool[idx]
     d2 = np.sum((sample[:, None, :] - sample[None, :, :]) ** 2, axis=-1)
     med = np.median(d2[np.triu_indices_from(d2, k=1)])
     return 1.0 / (2.0 * med) if med > 0 else 1.0
@@ -101,13 +109,18 @@ def _mmd2(a: np.ndarray, b: np.ndarray, gamma: float) -> float:
     return float(kaa.mean() + kbb.mean() - 2 * kab.mean())
 
 
-def mmd_time_series(X: np.ndarray, window: int = 20) -> np.ndarray:
+def mmd_time_series(X: np.ndarray, window: int = 20,
+                    causal_mask: np.ndarray = None) -> np.ndarray:
     """MMD^2 between adjacent rolling windows of X, the nonparametric
     counterpart to ``classical_bures_time_series`` (no Gaussian assumption).
     Same construction: today's trailing window vs. yesterday's, at a
     bandwidth fixed once from the whole series (see ``_global_gamma``).
+
+    ``causal_mask`` restricts bandwidth calibration to pre-cutoff rows; see
+    ``_global_gamma``. Pass the same pre-cutoff mask used to fit the rest of
+    the causal pipeline (e.g. ``raw_channels``'s ``hmm_fit``).
     """
-    gamma = _global_gamma(X)
+    gamma = _global_gamma(X, causal_mask=causal_mask)
     T = X.shape[0]
     out = np.full(T, np.nan)
     prev_w = None

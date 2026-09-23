@@ -465,9 +465,11 @@ coherence contribution.
 
 A synthetic sanity check (`qgmrd/classical_baseline.py`, a clean injected
 regime shift) shows the coherence term can matter in principle: SLD's peak
-response there is 130x its baseline vs. 27x for the classical-population-only
-version. So the formalism is not vacuous, that gap just does not appear on
-real market data at this sample size.
+response there is 130x its baseline vs. 75x for the classical-population-only
+version (populations matched by eigenvector overlap, not sorted rank, which
+would understate this: rank matching disagrees with proper tracking on 3.5%
+of days, checked directly on real data). So the formalism is not vacuous,
+that gap just does not appear on real market data at this sample size.
 
 **Conclusion: SLD should be described as a Bures-rate / Fisher-information
 statistic, not as a detector that draws power from quantum coherence.** The
@@ -703,7 +705,7 @@ multi-asset panel runs 14 crises, not 15.
   for whether it is more than a relabeled classical statistic. Four channels,
   each isolating one more layer (raw features, same rho_t, with and without
   coherence); SLD does not separate from any of them. A synthetic check shows
-  the coherence term can matter in principle (130x vs. 27x peak response on
+  the coherence term can matter in principle (130x vs. 75x peak response on
   an injected shift), just not on real data at this sample size. See
   ["Classical baselines for SLD"](#classical-baselines-for-sld).
 - **v5.11, DONE.** Why trailing return beats drawdown beyond τ: across every
